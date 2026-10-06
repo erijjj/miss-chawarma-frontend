@@ -17,18 +17,18 @@ import Footer from "@/components/Footer";
 
 import LogoMC from "/images/logoMissChawarma.png";
 import OurStoryImg from "/images/ourStory.jpg";
-import NotrePhylo from "/images/NOTrePHY.png";
-import MurFleur from "/images/murFleur.png";
-import table from "/images/photoT.png";
-import tableR from "/images/photoR.png";
+import NotrePhylo from "/images/NOTrePHY.jpg";
+import MurFleur from "/images/murFleur.jpg";
+import table from "/images/photoT.jpg";
+import tableR from "/images/photoR.jpg";
 
-import insta1 from "/images/insta_pic.png";
+import insta1 from "/images/insta_pic.jpg";
 import insta2 from "/images/insta_pic2.png";
 import insta3 from "/images/hoummous.jpeg";
 
-import tiktok1 from "/images/vid1.png";
-import tiktok2 from "/images/vid2.png";
-import tiktok3 from "/images/vid3.png";
+import tiktok1 from "/images/vid1.jpg";
+import tiktok2 from "/images/vid2.jpg";
+import tiktok3 from "/images/vid3.jpg";
 
 const ELFSIGHT_WIDGET_ID = import.meta.env.VITE_ELFSIGHT_WIDGET_ID || "";
 
@@ -321,16 +321,16 @@ const About = () => {
                   {t("about.storyText")}
                 </p>
 
-                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div className="about-story-stats mt-8 grid grid-cols-2 gap-3 sm:gap-4">
                   <div
-                    className="rounded-3xl p-5"
+                    className="about-story-stat rounded-3xl p-5"
                     style={{
                       background: "rgba(31,107,45,0.055)",
                       border: "1px solid rgba(31,107,45,0.10)",
                     }}
                   >
                     <p
-                      className="font-Fraunces text-3xl font-bold"
+                      className="about-story-stat-title font-Fraunces text-3xl font-bold"
                       style={{
                         color: GREEN,
                         fontFamily: "'Fraunces', serif",
@@ -340,7 +340,7 @@ const About = () => {
                     >
                       {t("about.locationTitle", "Paris 11e")}
                     </p>
-                    <p className="mt-2 font-fraunces text-sm leading-6 text-neutral-500">
+                    <p className="about-story-stat-text mt-2 font-fraunces text-sm leading-6 text-neutral-500">
                       {t(
                         "about.addressText",
                         "Une adresse conviviale au cœur de la rue Oberkampf.",
@@ -349,14 +349,14 @@ const About = () => {
                   </div>
 
                   <div
-                    className="rounded-3xl p-5"
+                    className="about-story-stat rounded-3xl p-5"
                     style={{
                       background: "rgba(196,125,14,0.065)",
                       border: "1px solid rgba(196,125,14,0.13)",
                     }}
                   >
                     <p
-                      className="font-Fraunces text-3xl font-bold"
+                      className="about-story-stat-title font-Fraunces text-3xl font-bold"
                       style={{
                         color: GOLD,
                         fontFamily: "'Fraunces', serif",
@@ -366,7 +366,7 @@ const About = () => {
                     >
                       {t("about.houseTitle", "Maison")}
                     </p>
-                    <p className="mt-2 font-fraunces text-sm leading-6 text-neutral-500">
+                    <p className="about-story-stat-text mt-2 font-fraunces text-sm leading-6 text-neutral-500">
                       {t(
                         "about.homemadeText",
                         "Des recettes cuisinées avec soin, fraîcheur et générosité.",
@@ -490,7 +490,7 @@ const About = () => {
               </p>
             </div>
 
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
+            <div className="mt-10 grid grid-cols-3 gap-3 sm:gap-5">
               {values.map((value, index) => {
                 const Icon = value.icon;
 
@@ -510,7 +510,7 @@ const About = () => {
                     }}
                   >
                     <div
-                      className="flex h-12 w-12 items-center justify-center rounded-2xl"
+                      className="about-value-icon flex h-12 w-12 items-center justify-center rounded-2xl"
                       style={{
                         color: index === 1 ? GOLD : GREEN,
                         background:
@@ -523,13 +523,13 @@ const About = () => {
                     </div>
 
                     <h3
-                      className="mt-5 font-playfair text-2xl"
+                      className="about-value-title mt-5 font-playfair text-2xl"
                       style={{ color: DARK_GREEN }}
                     >
                       {value.title}
                     </h3>
 
-                    <p className="mt-3 font-fraunces text-sm leading-7 text-neutral-500">
+                    <p className="about-value-text mt-3 font-fraunces text-sm leading-7 text-neutral-500">
                       {value.text}
                     </p>
                   </div>
@@ -1565,6 +1565,52 @@ const About = () => {
           .about-social-card { border-radius: 24px; }
           .about-social-row { min-height: 54px; }
           .about-social-orbit { display: none; }
+
+          /* "Paris 11e / Maison" : toujours 2 colonnes, en plus compact */
+          .about-story-stat {
+            padding: 14px !important;
+            border-radius: 18px !important;
+          }
+
+          .about-story-stat-title {
+            font-size: 1.3rem !important;
+            line-height: 1.15 !important;
+          }
+
+          .about-story-stat-text {
+            margin-top: 6px !important;
+            font-size: 11px !important;
+            line-height: 1.4 !important;
+          }
+
+          /* "Générosité / Authenticité / Savoir-faire" : toujours 3 colonnes */
+          .about-value-card {
+            padding: 12px !important;
+            border-radius: 18px !important;
+          }
+
+          .about-value-icon {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 12px !important;
+          }
+
+          .about-value-icon svg {
+            width: 15px !important;
+            height: 15px !important;
+          }
+
+          .about-value-title {
+            margin-top: 10px !important;
+            font-size: 13px !important;
+            line-height: 1.25 !important;
+          }
+
+          .about-value-text {
+            margin-top: 5px !important;
+            font-size: 10px !important;
+            line-height: 1.35 !important;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

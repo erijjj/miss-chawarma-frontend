@@ -84,11 +84,25 @@ const loadGoogleMaps = (language: "fr" | "en") => {
     ) as HTMLScriptElement | null;
 
     const finish = () => {
-      if ((window as any).google?.maps?.importLibrary) {
-        resolve((window as any).google);
-      } else {
-        reject(new Error("Google Maps failed to initialize."));
-      }
+      let attempts = 0;
+      const maxAttempts = 50; // 5 secondes max (50 x 100ms)
+
+      const check = () => {
+        if ((window as any).google?.maps?.importLibrary) {
+          resolve((window as any).google);
+          return;
+        }
+
+        attempts += 1;
+        if (attempts >= maxAttempts) {
+          reject(new Error("Google Maps failed to initialize."));
+          return;
+        }
+
+        setTimeout(check, 100);
+      };
+
+      check();
     };
 
     if (existingScript) {
@@ -124,6 +138,110 @@ const PLACEHOLDER =
   "https://placehold.co/160x160/f0eadf/1f6b2d?text=Miss+Chawarma";
 
 const formatEuro = (value: number) => `${value.toFixed(2).replace(".", ",")}€`;
+
+// dimanche = 0, lundi = 1, ... samedi = 6
+const OPENING_HOURS: Record<
+  number,
+  { open: string; close: string; closesNextDay: boolean }
+> = {
+  0: { open: "11:30", close: "02:00", closesNextDay: true }, // Dimanche
+  1: { open: "11:30", close: "00:00", closesNextDay: false }, // Lundi
+  2: { open: "11:30", close: "00:00", closesNextDay: false }, // Mardi
+  3: { open: "11:30", close: "00:00", closesNextDay: false }, // Mercredi
+  4: { open: "11:30", close: "02:00", closesNextDay: true }, // Jeudi
+  5: { open: "11:30", close: "02:00", closesNextDay: true }, // Vendredi
+  6: { open: "11:30", close: "02:00", closesNextDay: true }, // Samedi
+};
+
+const PREP_BUFFER_MIN: Record<"emporter" | "livraison", number> = {
+  emporter: 20,
+  livraison: 45,
+};
+
+const toMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+};
+
+const minutesToHHMM = (mins: number) => {
+  const total = ((mins % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const formatDateISO = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// Retourne le prochain créneau valide selon le mode de commande
+const getNextAvailableSlot = (
+  orderType: "emporter" | "livraison",
+): { date: string; time: string } => {
+  const now = new Date();
+  const buffer = PREP_BUFFER_MIN[orderType];
+
+  for (let dayOffset = 0; dayOffset < 8; dayOffset++) {
+    const candidate = new Date(now);
+    candidate.setDate(now.getDate() + dayOffset);
+    const dow = candidate.getDay();
+    const hours = OPENING_HOURS[dow];
+
+    const openMin = toMinutes(hours.open);
+    const closeMin =
+      toMinutes(hours.close) + (hours.closesNextDay ? 24 * 60 : 0);
+    const lastOrderMin = closeMin - buffer;
+
+    let earliestMin = openMin;
+
+    if (dayOffset === 0) {
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      earliestMin = Math.max(openMin, nowMin + buffer);
+      earliestMin = Math.ceil(earliestMin / 15) * 15; // arrondi au quart d'heure
+    }
+
+    if (earliestMin <= lastOrderMin) {
+      return {
+        date: formatDateISO(candidate),
+        time: minutesToHHMM(earliestMin),
+      };
+    }
+  }
+
+  // Ne devrait jamais arriver (ouvert 7j/7), sécurité
+  return { date: formatDateISO(now), time: OPENING_HOURS[now.getDay()].open };
+};
+
+// Vérifie qu'un créneau choisi par le client tombe bien dans les horaires
+// d'ouverture, avec assez de marge pour la préparation/livraison, et pas
+// dans le passé.
+const isRequestedSlotValid = (
+  dateStr: string,
+  timeStr: string,
+  orderType: "emporter" | "livraison",
+): boolean => {
+  if (!dateStr || !timeStr) return false;
+
+  const requested = new Date(`${dateStr}T${timeStr}:00`);
+  if (Number.isNaN(requested.getTime())) return false;
+
+  const buffer = PREP_BUFFER_MIN[orderType];
+  const minAllowed = new Date(Date.now() + buffer * 60000);
+  if (requested < minAllowed) return false;
+
+  const dow = requested.getDay();
+  const hours = OPENING_HOURS[dow];
+  const openMin = toMinutes(hours.open);
+  const closeMin = toMinutes(hours.close) + (hours.closesNextDay ? 24 * 60 : 0);
+  const lastOrderMin = closeMin - buffer;
+
+  const requestedMin = requested.getHours() * 60 + requested.getMinutes();
+
+  return requestedMin >= openMin && requestedMin <= lastOrderMin;
+};
 
 const getMinDate = () => new Date().toISOString().split("T")[0];
 
@@ -305,7 +423,8 @@ const DeliveryAddressPicker: React.FC<DeliveryAddressPickerProps> = ({
 
         setMapsReady(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Google Maps init error:", err);
         setMapsError(
           lang === "fr"
             ? "Google Maps est indisponible. Vérifiez la clé API et les restrictions."
@@ -686,7 +805,7 @@ const OrderSummary: React.FC<{
           <p className="checkout-eyebrow">
             {lang === "fr" ? "Votre sélection" : "Your selection"}
           </p>
-          <h2>{t("checkout.orderSummary", "Votre commande")}</h2>
+          <h2>{lang === "fr" ? "Votre commande" : "Your order"}</h2>
         </div>
       </div>
 
@@ -721,7 +840,7 @@ const OrderSummary: React.FC<{
 
       <div className="checkout-summary-lines">
         <div>
-          <span>{t("checkout.subtotal", "Sous-total")}</span>
+          <span>{lang === "fr" ? "Sous-total" : "Subtotal"}</span>
           <strong>{formatEuro(subtotal)}</strong>
         </div>
 
@@ -737,7 +856,7 @@ const OrderSummary: React.FC<{
         )}
 
         <div className="checkout-summary-total">
-          <span>{t("checkout.total", "Total")}</span>
+          <span>{lang === "fr" ? "Total" : "Total"}</span>
           <strong>{formatEuro(total)}</strong>
         </div>
       </div>
@@ -856,6 +975,13 @@ const Checkout = () => {
     ? "en"
     : "fr";
 
+  // Desktop floating order summary.
+  // We intentionally emulate sticky with position: fixed because some global
+  // layout/overflow rules in the app prevent CSS sticky from working reliably.
+  const checkoutLayoutRef = useRef<HTMLDivElement | null>(null);
+  const desktopSummaryRef = useRef<HTMLDivElement | null>(null);
+  const paymentStopRef = useRef<HTMLButtonElement | null>(null);
+
   const [orderType, setOrderType] = useState<"emporter" | "livraison">(
     "emporter",
   );
@@ -873,6 +999,118 @@ const Checkout = () => {
     city: "",
     note: "",
   });
+
+  // Pré-remplit automatiquement le prochain créneau disponible dès que le
+  // mode de réception change, en tenant compte des horaires d'ouverture et
+  // du délai de préparation/livraison — le client peut toujours modifier
+  // manuellement ensuite.
+  useEffect(() => {
+    const slot = getNextAvailableSlot(orderType);
+    setForm((current) => ({
+      ...current,
+      requestedDate: slot.date,
+      requestedTime: slot.time,
+    }));
+  }, [orderType]);
+
+  // On laptop/desktop, keep "Votre commande / Your order" visible while the
+  // customer scrolls through the form. This does not depend on CSS sticky,
+  // so it still works even if another global parent uses overflow/transform.
+  useEffect(() => {
+    const layout = checkoutLayoutRef.current;
+    const summary = desktopSummaryRef.current;
+
+    if (!layout || !summary) return;
+
+    const DESKTOP_BREAKPOINT = 1024;
+    const TOP_OFFSET = 104;
+    const MAX_CONTAINER_WIDTH = 1180;
+    const DESKTOP_SUMMARY_WIDTH = 360;
+
+    const resetSummary = () => {
+      summary.style.position = "relative";
+      summary.style.top = "auto";
+      summary.style.right = "auto";
+      summary.style.width = "auto";
+      summary.style.zIndex = "20";
+      summary.style.transform = "none";
+    };
+
+    const updateSummaryPosition = () => {
+      if (window.innerWidth < DESKTOP_BREAKPOINT) {
+        resetSummary();
+        return;
+      }
+
+      const layoutRect = layout.getBoundingClientRect();
+      const summaryHeight = summary.offsetHeight;
+
+      // Before the checkout grid reaches the floating position, leave the
+      // summary exactly in its original place.
+      if (layoutRect.top > TOP_OFFSET) {
+        resetSummary();
+        return;
+      }
+
+      // Right edge aligned with the 1180px checkout container.
+      const rightOffset = Math.max(
+        16,
+        (window.innerWidth - MAX_CONTAINER_WIDTH) / 2,
+      );
+
+      // Stop boundary:
+      // while the form is active, the summary must never go lower than the
+      // "Continuer vers le paiement / Continue to payment" button.
+      // When the summary reaches that button, its bottom edge follows the
+      // button upward instead of continuing into the footer.
+      const paymentButton = paymentStopRef.current;
+
+      let stopBottom = layoutRect.bottom;
+
+      if (paymentButton) {
+        stopBottom = paymentButton.getBoundingClientRect().bottom;
+      }
+
+      const maxAllowedTop = stopBottom - summaryHeight;
+
+      // Normal state: fixed just under the header.
+      // End state: it is progressively pushed upward with the payment button,
+      // which makes it stop at exactly the end of the form.
+      const floatingTop = Math.min(TOP_OFFSET, maxAllowedTop);
+
+      summary.style.position = "fixed";
+      summary.style.top = `${floatingTop}px`;
+      summary.style.right = `${rightOffset}px`;
+      summary.style.width = `${DESKTOP_SUMMARY_WIDTH}px`;
+      summary.style.zIndex = "30";
+      summary.style.transform = "translateZ(0)";
+    };
+
+    updateSummaryPosition();
+
+    window.addEventListener("scroll", updateSummaryPosition, { passive: true });
+    window.addEventListener("resize", updateSummaryPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateSummaryPosition);
+      window.removeEventListener("resize", updateSummaryPosition);
+      resetSummary();
+    };
+  }, []);
+
+  // Validation en direct : recalculée à chaque changement de date/heure/mode,
+  // pour afficher un avertissement immédiatement sous le champ plutôt que
+  // d'attendre la soumission du formulaire.
+  const slotIsValid = useMemo(
+    () =>
+      isRequestedSlotValid(form.requestedDate, form.requestedTime, orderType),
+    [form.requestedDate, form.requestedTime, orderType],
+  );
+
+  const nextSlotSuggestion = useMemo(
+    () => (!slotIsValid ? getNextAvailableSlot(orderType) : null),
+    [slotIsValid, orderType],
+  );
 
   const [paymentMethod, setPaymentMethod] = useState<"carte" | "sur_place">(
     "sur_place",
@@ -1077,6 +1315,16 @@ const Checkout = () => {
     event.preventDefault();
     setErrorMessage("");
 
+    if (!slotIsValid) {
+      const slot = nextSlotSuggestion ?? getNextAvailableSlot(orderType);
+      setErrorMessage(
+        lang === "fr"
+          ? `Cet horaire n'est pas disponible (restaurant fermé ou délai insuffisant). Prochain créneau disponible : ${slot.date} à ${slot.time}.`
+          : `This time slot isn't available (restaurant closed or not enough lead time). Next available slot: ${slot.date} at ${slot.time}.`,
+      );
+      return;
+    }
+
     if (orderType === "livraison" && !form.addressStreet.trim()) {
       setErrorMessage(
         lang === "fr"
@@ -1265,13 +1513,14 @@ const Checkout = () => {
               : "Your cart is waiting"}
           </p>
 
-          <h1>{t("checkout.emptyTitle", "Votre panier est vide")}</h1>
+          <h1>
+            {lang === "fr" ? "Votre panier est vide" : "Your cart is empty"}
+          </h1>
 
           <p>
-            {t(
-              "checkout.emptyText",
-              "Ajoutez des plats depuis notre menu pour commander.",
-            )}
+            {lang === "fr"
+              ? "Ajoutez des plats depuis notre menu pour commander."
+              : "Add dishes from our menu to place your order."}
           </p>
 
           <button
@@ -1279,7 +1528,7 @@ const Checkout = () => {
             onClick={() => navigate("/menu")}
             className="checkout-primary-button checkout-empty-button"
           >
-            <span>{t("checkout.backToMenu", "Voir le menu")}</span>
+            <span>{lang === "fr" ? "Voir le menu" : "View menu"}</span>
             <span className="checkout-primary-button-icon">
               <ArrowRight className="h-4 w-4" />
             </span>
@@ -1326,7 +1575,7 @@ const Checkout = () => {
           className="checkout-back"
         >
           <ArrowLeft className="h-4 w-4" />
-          {t("checkout.backToMenu", "Retour au menu")}
+          {lang === "fr" ? "Retour au menu" : "Back to menu"}
         </button>
 
         <section className="checkout-hero">
@@ -1412,7 +1661,23 @@ const Checkout = () => {
           </span>
         </div>
 
-        <div className="checkout-layout">
+        <div className="checkout-mobile-summary">
+          <OrderSummary
+            subtotal={orderResult ? orderResult.subtotal : subtotal}
+            deliveryFee={
+              step === "payment"
+                ? (orderResult?.deliveryFee ?? null)
+                : orderType === "livraison"
+                  ? (deliveryInfo?.fee ?? null)
+                  : null
+            }
+            total={orderResult ? orderResult.total : currentTotal}
+            orderType={orderType}
+            discountAmount={couponDiscountAmount}
+          />
+        </div>
+
+        <div ref={checkoutLayoutRef} className="checkout-layout">
           <div className="checkout-main-column">
             {step === "form" && (
               <form
@@ -1440,7 +1705,9 @@ const Checkout = () => {
                         <Store className="h-6 w-6" />
                       </span>
                       <span>
-                        <strong>{t("checkout.pickup", "À emporter")}</strong>
+                        <strong>
+                          {lang === "fr" ? "À emporter" : "Pickup"}
+                        </strong>
                         <small>
                           {lang === "fr"
                             ? "Prêt en 15–20 minutes"
@@ -1463,7 +1730,9 @@ const Checkout = () => {
                         <Truck className="h-6 w-6" />
                       </span>
                       <span>
-                        <strong>{t("checkout.delivery", "Livraison")}</strong>
+                        <strong>
+                          {lang === "fr" ? "Livraison" : "Delivery"}
+                        </strong>
                         <small>
                           {lang === "fr"
                             ? "Chez vous en 30–45 minutes"
@@ -1486,9 +1755,12 @@ const Checkout = () => {
                   title={lang === "fr" ? "Date et heure" : "Date and time"}
                   icon={<CalendarDays className="h-5 w-5" />}
                 >
-                  <div className="checkout-fields-grid">
+                  <div className="checkout-fields-grid checkout-datetime-grid">
+                    {" "}
                     <FieldShell
-                      label={t("checkout.date", "Date souhaitée")}
+                      label={
+                        lang === "fr" ? "Date souhaitée" : "Preferred date"
+                      }
                       icon={<CalendarDays className="h-4 w-4" />}
                     >
                       <input
@@ -1500,9 +1772,10 @@ const Checkout = () => {
                         onChange={handleChange}
                       />
                     </FieldShell>
-
                     <FieldShell
-                      label={t("checkout.time", "Heure souhaitée")}
+                      label={
+                        lang === "fr" ? "Heure souhaitée" : "Preferred time"
+                      }
                       icon={<Clock3 className="h-4 w-4" />}
                     >
                       <input
@@ -1514,6 +1787,20 @@ const Checkout = () => {
                       />
                     </FieldShell>
                   </div>
+
+                  {form.requestedDate &&
+                    form.requestedTime &&
+                    !slotIsValid &&
+                    nextSlotSuggestion && (
+                      <div className="checkout-delivery-status is-warning">
+                        <Clock3 className="h-4 w-4" />
+                        <span>
+                          {lang === "fr"
+                            ? `Cet horaire n'est pas disponible (restaurant fermé ou délai insuffisant). Prochain créneau : ${nextSlotSuggestion.date} à ${nextSlotSuggestion.time}.`
+                            : `This time slot isn't available (restaurant closed or not enough lead time). Next available slot: ${nextSlotSuggestion.date} at ${nextSlotSuggestion.time}.`}
+                        </span>
+                      </div>
+                    )}
                 </SectionCard>
 
                 <SectionCard
@@ -1527,7 +1814,7 @@ const Checkout = () => {
                 >
                   <div className="checkout-fields-grid">
                     <FieldShell
-                      label={t("checkout.firstName", "Prénom")}
+                      label={lang === "fr" ? "Prénom" : "First name"}
                       icon={<User className="h-4 w-4" />}
                     >
                       <input
@@ -1543,7 +1830,7 @@ const Checkout = () => {
                     </FieldShell>
 
                     <FieldShell
-                      label={t("checkout.lastName", "Nom")}
+                      label={lang === "fr" ? "Nom" : "Last name"}
                       icon={<User className="h-4 w-4" />}
                     >
                       <input
@@ -1559,7 +1846,7 @@ const Checkout = () => {
                     </FieldShell>
 
                     <FieldShell
-                      label={t("checkout.email", "Email")}
+                      label="Email"
                       icon={<Mail className="h-4 w-4" />}
                     >
                       <input
@@ -1568,7 +1855,9 @@ const Checkout = () => {
                         required
                         value={form.email}
                         onChange={handleChange}
-                        placeholder="vous@email.com"
+                        placeholder={
+                          lang === "fr" ? "vous@email.com" : "you@email.com"
+                        }
                       />
                       {isTalintsDomain && verificationStatus === "verified" && (
                         <span
@@ -1709,7 +1998,7 @@ const Checkout = () => {
                     </FieldShell>
 
                     <FieldShell
-                      label={t("checkout.phone", "Téléphone")}
+                      label={lang === "fr" ? "Téléphone" : "Phone"}
                       icon={<Phone className="h-4 w-4" />}
                     >
                       <input
@@ -1731,7 +2020,11 @@ const Checkout = () => {
                         ? "Où devons-nous vous livrer ?"
                         : "Where should we deliver?"
                     }
-                    title={t("checkout.addressTitle", "Adresse de livraison")}
+                    title={
+                      lang === "fr"
+                        ? "Adresse de livraison"
+                        : "Delivery address"
+                    }
                     icon={<MapPin className="h-5 w-5" />}
                   >
                     <div className="checkout-address-grid">
@@ -1763,7 +2056,7 @@ const Checkout = () => {
 
                       <div className="checkout-fields-grid">
                         <FieldShell
-                          label={t("checkout.postalCode", "Code postal")}
+                          label={lang === "fr" ? "Code postal" : "Postal code"}
                           icon={<MapPin className="h-4 w-4" />}
                         >
                           <input
@@ -1778,7 +2071,7 @@ const Checkout = () => {
                         </FieldShell>
 
                         <FieldShell
-                          label={t("checkout.city", "Ville")}
+                          label={lang === "fr" ? "Ville" : "City"}
                           icon={<MapPin className="h-4 w-4" />}
                         >
                           <input
@@ -1866,7 +2159,11 @@ const Checkout = () => {
                   <div className="checkout-error">{errorMessage}</div>
                 )}
 
-                <button type="submit" className="checkout-primary-button">
+                <button
+                  ref={paymentStopRef}
+                  type="submit"
+                  className="checkout-primary-button"
+                >
                   <span>
                     {lang === "fr"
                       ? "Continuer vers le paiement"
@@ -1985,10 +2282,9 @@ const Checkout = () => {
                       </span>
                       <span>
                         <strong>
-                          {t(
-                            "checkout.payCard",
-                            "Carte / Apple Pay / Google Pay",
-                          )}
+                          {lang === "fr"
+                            ? "Carte / Apple Pay / Google Pay"
+                            : "Card / Apple Pay / Google Pay"}
                         </strong>
                         <small>
                           {lang === "fr"
@@ -2013,7 +2309,7 @@ const Checkout = () => {
                       </span>
                       <span>
                         <strong>
-                          {t("checkout.payOnSite", "Payer sur place")}
+                          {lang === "fr" ? "Payer sur place" : "Pay on site"}
                         </strong>
                         <small>
                           {lang === "fr"
@@ -2182,19 +2478,21 @@ const Checkout = () => {
             )}
           </div>
 
-          <OrderSummary
-            subtotal={orderResult ? orderResult.subtotal : subtotal}
-            deliveryFee={
-              step === "payment"
-                ? (orderResult?.deliveryFee ?? null)
-                : orderType === "livraison"
-                  ? (deliveryInfo?.fee ?? null)
-                  : null
-            }
-            total={orderResult ? orderResult.total : currentTotal}
-            orderType={orderType}
-            discountAmount={couponDiscountAmount}
-          />
+          <div ref={desktopSummaryRef} className="checkout-desktop-summary">
+            <OrderSummary
+              subtotal={orderResult ? orderResult.subtotal : subtotal}
+              deliveryFee={
+                step === "payment"
+                  ? (orderResult?.deliveryFee ?? null)
+                  : orderType === "livraison"
+                    ? (deliveryInfo?.fee ?? null)
+                    : null
+              }
+              total={orderResult ? orderResult.total : currentTotal}
+              orderType={orderType}
+              discountAmount={couponDiscountAmount}
+            />
+          </div>
         </div>
       </main>
 
@@ -2203,7 +2501,12 @@ const Checkout = () => {
       <style>{`
         .checkout-page {
           position: relative;
-          overflow: hidden;
+          /* IMPORTANT:
+             overflow-x:hidden creates a scrolling ancestor and prevents
+             the order summary from sticking to the viewport correctly.
+             clip still hides horizontal overflow without breaking sticky. */
+          overflow-x: clip;
+          overflow-y: visible;
           color: #343431;
         }
 
@@ -2380,6 +2683,19 @@ const Checkout = () => {
           align-items: start;
         }
 
+        /* Mobile gets its own sticky summary outside the grid.
+           Because its containing block is the whole checkout container,
+           it can follow the customer for the entire form instead of
+           being trapped inside a one-row mobile grid cell. */
+        .checkout-mobile-summary {
+          display: none;
+        }
+
+        .checkout-desktop-summary {
+          min-width: 0;
+          align-self: start;
+        }
+
         .checkout-main-column,
         .checkout-form {
           display: flex;
@@ -2544,11 +2860,13 @@ const Checkout = () => {
           transform: scale(1.06);
         }
 
-        .checkout-fields-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 14px;
-        }
+.checkout-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+
 
         .checkout-address-grid {
           display: flex;
@@ -3116,9 +3434,17 @@ const Checkout = () => {
           animation: checkoutSpin .7s linear infinite;
         }
 
+        .checkout-desktop-summary {
+          position: relative;
+          align-self: start;
+          height: max-content;
+          min-width: 0;
+          z-index: 20;
+        }
+
         .checkout-summary {
-          position: sticky;
-          top: 104px;
+          position: relative;
+          height: fit-content;
           overflow: hidden;
           border-radius: 28px;
           padding: 22px;
@@ -3171,6 +3497,12 @@ const Checkout = () => {
           overflow-y: auto;
           margin-top: 20px;
           padding-right: 3px;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+
+        .checkout-summary-items::-webkit-scrollbar {
+          display: none;
         }
 
         .checkout-summary-item {
@@ -3398,18 +3730,65 @@ const Checkout = () => {
           to { transform: rotate(360deg); }
         }
 
+        /* =========================================================
+           LAPTOP / DESKTOP
+           "Votre commande / Your order" suit le scroll à droite.
+        ========================================================= */
+        @media (min-width: 1024px) {
+          .checkout-container,
+          .checkout-layout,
+          .checkout-main-column {
+            overflow: visible !important;
+          }
+
+          .checkout-layout {
+            align-items: start !important;
+          }
+
+          .checkout-desktop-summary {
+            display: block;
+            position: relative;
+            align-self: start !important;
+            height: max-content !important;
+            min-width: 0;
+            z-index: 20;
+          }
+
+          .checkout-desktop-summary .checkout-summary {
+            position: relative !important;
+            top: auto !important;
+            width: 100%;
+          }
+        }
+
+        /* =========================================================
+           TABLET / MOBILE
+           Le résumé reste normal : PAS sticky sur téléphone.
+        ========================================================= */
         @media (max-width: 1023px) {
           .checkout-layout {
             grid-template-columns: 1fr;
           }
 
-          .checkout-summary {
+          .checkout-desktop-summary {
+            display: none;
+          }
+
+          .checkout-mobile-summary {
+            display: block;
             position: static;
-            order: -1;
+            margin-bottom: 14px;
+          }
+
+          .checkout-mobile-summary .checkout-summary {
+            position: relative;
+            top: auto;
+            width: 100%;
           }
 
           .checkout-summary-items {
-            max-height: 260px;
+            max-height: none;
+            overflow: visible;
           }
         }
 
@@ -3461,21 +3840,332 @@ const Checkout = () => {
             height: 18px;
           }
 
-          .checkout-section-card,
-          .checkout-summary {
-            border-radius: 23px;
-            padding: 18px;
+          .checkout-layout {
+            gap: 14px;
           }
 
+          .checkout-section-card {
+            border-radius: 20px;
+            padding: 13px;
+          }
+
+          /* -------------------------------------------------------
+             STICKY ORDER SUMMARY
+             It remains visible while the customer fills the form.
+          ------------------------------------------------------- */
+          .checkout-mobile-summary {
+            position: static;
+          }
+
+          .checkout-mobile-summary .checkout-summary {
+            max-height: 40dvh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            border-radius: 20px;
+            padding: 13px;
+            background: rgba(255,253,248,.97);
+            box-shadow:
+              0 18px 42px rgba(18,63,29,.16),
+              0 0 0 1px rgba(196,125,14,.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+          }
+
+          .checkout-mobile-summary .checkout-summary::-webkit-scrollbar {
+            display: none;
+          }
+
+          .checkout-summary-top {
+            gap: 9px;
+          }
+
+          .checkout-summary-bag {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+          }
+
+          .checkout-summary-top h2 {
+            margin-top: 1px;
+            font-size: 18px;
+            line-height: 1.05;
+          }
+
+          .checkout-summary .checkout-eyebrow {
+            font-size: 8px;
+            letter-spacing: .16em;
+          }
+
+          .checkout-summary-items {
+            max-height: none;
+            overflow: visible;
+            margin-top: 10px;
+            gap: 6px;
+          }
+
+          .checkout-summary-item {
+            min-height: 58px;
+            gap: 8px;
+            border-radius: 13px;
+            padding: 6px;
+          }
+
+          .checkout-summary-item img {
+            width: 42px;
+            height: 42px;
+            border-radius: 11px;
+          }
+
+          .checkout-summary-item-name {
+            font-size: 11px;
+          }
+
+          .checkout-summary-item-meta {
+            margin-top: 2px;
+            font-size: 9px;
+          }
+
+          .checkout-summary-item > strong {
+            font-size: 11px;
+          }
+
+          .checkout-summary-divider {
+            margin: 9px 0;
+          }
+
+          .checkout-summary-lines {
+            gap: 5px;
+          }
+
+          .checkout-summary-lines > div {
+            font-size: 10px;
+          }
+
+          .checkout-summary-total {
+            margin-top: 2px;
+            padding-top: 7px;
+            font-size: 12px !important;
+          }
+
+          .checkout-summary-total strong {
+            font-size: 19px;
+          }
+
+          /* These are useful on desktop, but hiding them here keeps the
+             sticky summary compact enough to leave room for the form. */
+          .checkout-summary-time,
+          .checkout-trust-list {
+            display: none;
+          }
+
+          /* -------------------------------------------------------
+             TRUE 2-COLUMN MOBILE PAIRS
+          ------------------------------------------------------- */
           .checkout-choice-grid,
-          .checkout-payment-grid,
           .checkout-fields-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 14px;
+            row-gap: 10px;
+          }
+.checkout-fields-grid.checkout-datetime-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) !important;
+  gap: 14px !important;
+}
+
+          /* Payment choices can contain longer labels, so keep them
+             vertical for readability. */
+          .checkout-payment-grid {
             grid-template-columns: 1fr;
           }
 
-          .checkout-choice-card,
+          .checkout-choice-card {
+            min-height: 86px;
+            gap: 8px;
+            border-radius: 17px;
+            padding: 11px 9px;
+          }
+
           .checkout-payment-card {
-            min-height: 102px;
+            min-height: 94px;
+          }
+
+          .checkout-choice-icon {
+            width: 37px;
+            height: 37px;
+            border-radius: 12px;
+          }
+
+          .checkout-choice-icon svg {
+            width: 19px;
+            height: 19px;
+          }
+
+          .checkout-choice-card > span:nth-child(2) {
+            min-width: 0;
+            padding-right: 12px;
+          }
+
+          .checkout-choice-card strong {
+            font-size: 11px;
+            line-height: 1.2;
+          }
+
+          .checkout-choice-card small {
+            margin-top: 3px;
+            font-size: 8.5px;
+            line-height: 1.25;
+          }
+
+          .checkout-choice-check {
+            right: 7px;
+            top: 7px;
+            width: 19px;
+            height: 19px;
+          }
+
+          .checkout-choice-check svg {
+            width: 12px;
+            height: 12px;
+          }
+
+          /* Date/time and customer fields stay small enough to fit
+             comfortably side by side on iPhone-sized screens. */
+          .checkout-field-label {
+            gap: 4px;
+            margin-bottom: 5px;
+            font-size: 8.5px;
+            line-height: 1.2;
+          }
+
+          .checkout-field-label svg {
+            width: 13px;
+            height: 13px;
+            flex: 0 0 auto;
+          }
+
+          .checkout-field {
+            min-width: 0;
+            width: 100%;
+          }
+
+          .checkout-field input {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            height: 40px;
+            min-height: 40px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            padding: 0 9px;
+            font-size: 16px; /* avoids iPhone zoom on focus */
+            line-height: normal;
+            background: #fff;
+          }
+
+          /* iPhone/Safari/Chrome date & time inputs need explicit dimensions.
+             Without this, the browser can render the native control as a tiny
+             pill even though the parent grid cell is much taller. */
+          .checkout-field input[type="date"],
+          .checkout-field input[type="time"] {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            height: 40px;
+            min-height: 40px;
+            box-sizing: border-box;
+            padding: 0 9px;
+            font-size: 16px;
+            line-height: 40px;
+            color: #31312f;
+            background-color: #fff;
+          }
+
+          .checkout-field input[type="date"]::-webkit-date-and-time-value,
+          .checkout-field input[type="time"]::-webkit-date-and-time-value {
+            min-height: 1.2em;
+            margin: 0;
+            text-align: left;
+          }
+
+          .checkout-field input[type="date"]::-webkit-calendar-picker-indicator,
+          .checkout-field input[type="time"]::-webkit-calendar-picker-indicator {
+            margin-left: auto;
+            opacity: .72;
+          }
+
+          /* Payment-step recap:
+             3 columns are too narrow on a phone. Keep the two useful summary
+             cards side by side, then give the client card the full row. */
+          .checkout-details-recap {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 12px;
+            row-gap: 10px;
+            margin-bottom: 14px;
+          }
+
+          .checkout-details-recap > div {
+            min-width: 0;
+            min-height: 58px;
+            gap: 7px;
+            border-radius: 13px;
+            padding: 8px 9px;
+          }
+
+          .checkout-details-recap > div:nth-child(3):not(.is-wide) {
+            grid-column: 1 / -1;
+          }
+
+          .checkout-details-recap > div > span {
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+          }
+
+          .checkout-details-recap > div > span svg {
+            width: 14px;
+            height: 14px;
+          }
+
+          .checkout-details-recap > div > div {
+            min-width: 0;
+          }
+
+          .checkout-details-recap small {
+            font-size: 8px;
+            letter-spacing: .07em;
+          }
+
+          .checkout-details-recap strong {
+            margin-top: 2px;
+            overflow: visible;
+            font-size: 10.5px;
+            line-height: 1.3;
+            text-overflow: clip;
+            white-space: normal;
+            overflow-wrap: anywhere;
+          }
+
+          .checkout-section-heading {
+            gap: 10px;
+            margin-bottom: 14px;
+          }
+
+          .checkout-section-icon {
+            width: 37px;
+            height: 37px;
+            border-radius: 12px;
+          }
+
+          .checkout-section-heading p {
+            font-size: 7.5px;
+            letter-spacing: .15em;
+          }
+
+          .checkout-section-heading h2 {
+            font-size: 18px;
           }
 
           .checkout-address-search-top,
@@ -3513,6 +4203,19 @@ const Checkout = () => {
 
           .checkout-map-address-preview p {
             white-space: normal;
+          }
+        }
+
+        @media (max-width: 350px) {
+          .checkout-choice-grid,
+          .checkout-fields-grid,
+          .checkout-fields-grid.checkout-datetime-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          .checkout-mobile-summary .checkout-summary {
+            max-height: 38dvh;
           }
         }
 

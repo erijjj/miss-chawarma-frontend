@@ -187,12 +187,21 @@ const Footer = () => {
         </div>
 
         {/* Copyright */}
+        {/* Copyright */}
         <div
           className="mt-10 pt-6 text-center text-xs"
           style={{ borderTop: "1px solid #333", color: "#666" }}
         >
           © {currentYear} Miss Chawarma · By Maison MEZZÉ ·{" "}
           {t("footer.copyright")}
+          {" · "}
+          <Link
+            to="/mentions-legales"
+            className="hover:opacity-80 transition-opacity"
+            style={{ color: "#888" }}
+          >
+            {t("footer.legalNotice", "Mentions légales")}
+          </Link>
         </div>
       </div>
     </footer>

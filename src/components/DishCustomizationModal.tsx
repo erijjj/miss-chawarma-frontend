@@ -701,13 +701,26 @@ const DishCustomizationModal: React.FC<Props> = ({
           msOverflowStyle: "none",
         }}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full text-white font-bold text-lg shadow"
-          style={{ background: "#1f6b2d" }}
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+            height: 0,
+            overflow: "visible",
+            display: "flex",
+            justifyContent: "flex-end",
+            pointerEvents: "none",
+          }}
         >
-          <X className="h-4 w-4" />
-        </button>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-white font-bold text-lg shadow"
+            style={{ background: "#1f6b2d", margin: "12px 12px 0 0", pointerEvents: "auto" }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="p-6">
           <h3

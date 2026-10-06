@@ -9,7 +9,6 @@
     "contact": "Contact",
     "tagline": "Cuisine libanaise authentique"
   },
-
   "hero": {
     "greeting": "Habibi! Bienvenue chez",
     "brandName": "Miss Chawarma",
@@ -21,52 +20,64 @@
     "reserve": "Réservez",
     "commande": "Commandez en ligne",
     "tableReservation": "Réservez une table",
-    "eventReservation": "Organisez un événement"
+    "eventReservation": "Organisez un événement",
+    "mustHaves": "Nos incontournables",
+    "mustHave1Title": "Chawarma poulet",
+    "mustHave1Subtitle": "Le grand classique maison",
+    "mustHave2Title": "Hallou'me",
+    "mustHave2Subtitle": "Fondant, grillé, généreux",
+    "mustHave3Title": "Mezzés à partager",
+    "mustHave3Subtitle": "Un peu de tout, à plusieurs",
+    "previousMustHave": "Voir le précédent",
+    "nextMustHave": "Voir le suivant",
+    "swipeHint": "Faites glisser pour découvrir",
+    "findUs": "Nous trouver",
+    "mobileKicker": "Cuisine libanaise maison",
+    "habibi": "Habibi!",
+    "welcomeAt": "Bienvenue chez",
+    "mobileSubtitle": "Cuisine libanaise maison",
+    "openingMobile": "Ouvert 7j/7",
+    "viewMap": "Voir la carte",
+    "mustHave6Title": "Loubia b Zeyt",
+    "mustHave6Subtitle": "Haricots mijotés à l’huile d’olive",
+    "mustHave4Title": "Miss Tabboulé",
+    "mustHave4Subtitle": "Frais, herbacé et généreux",
+    "mustHave5Title": "Namoura",
+    "mustHave5Subtitle": "Douceur libanaise à la semoule"
   },
   "about": {
     "eyebrow": "Une maison libanaise à Paris",
     "title": "À propos de nous",
     "heroText": "Miss Chawarma est une histoire de cuisine, de transmission et de générosité, née de l’envie de faire découvrir un Liban authentique, chaleureux et vivant.",
     "discover": "Découvrir notre histoire",
-
     "storyEyebrow": "Notre histoire",
     "storyHeading": "Une adresse née de la passion du Liban",
     "storyText": "Chez Miss Chawarma, nous partageons la passion de la cuisine libanaise à travers des recettes authentiques et généreuses. Inspirés par la tradition, nous revisitons le chawarma avec une touche moderne, sans jamais perdre son âme.",
-
     "locationTitle": "Paris 11 ème",
     "addressText": "Une adresse conviviale au cœur de la rue Oberkampf.",
     "houseTitle": "Fait Maison",
     "homemadeText": "Des recettes cuisinées avec soin, fraîcheur et générosité.",
     "address": "128 Rue Oberkampf, Paris 11 ème",
-
     "philosophyEyebrow": "Notre philosophie",
     "philosophyHeading": "Une cuisine sincère, généreuse et vivante",
     "philosophyText": "Chez Miss Chawarma, nous privilégions des produits frais et soigneusement sélectionnés. Nous cuisinons avec précision et simplicité, dans le respect des saveurs authentiques du Liban.",
-
     "valueOneTitle": "Générosité",
     "valueOneText": "Des assiettes faites pour être partagées et des souvenirs faits pour durer.",
-
     "valueTwoTitle": "Authenticité",
     "valueTwoText": "Des recettes inspirées du Liban, préparées avec sincérité et respect.",
-
     "valueThreeTitle": "Savoir-faire",
     "valueThreeText": "Une cuisine maison, précise et généreuse, portée par une équipe passionnée.",
-
     "galleryEyebrow": "L’univers Miss Chawarma",
     "galleryTitle": "Une maison qui se vit autant qu’elle se goûte",
     "galleryText": "Des détails, des couleurs et une équipe qui font de chaque visite une expérience chaleureuse.",
-
     "galleryStory": "L’histoire de Miss Chawarma",
     "galleryTeam": "L’équipe Miss Chawarma",
     "galleryRestaurant": "Le restaurant",
     "galleryDetails": "Les détails du restaurant",
-
     "reviewsEyebrow": "Ils parlent de nous",
     "reviewsTitle": "Ce que nos clients racontent",
-
     "socialEyebrow": "Suivez l’aventure",
     "socialHeading": "Retrouvez les coulisses, les plats et l’ambiance Miss Chawarma",
-
     "logoInteraction": "Déplacer le logo Miss Chawarma",
     "logoHint": "Maintenez et déplacez le logo. Double-cliquez pour le remettre dans le coin.",
     "socialText": "Des instants gourmands, une équipe passionnée et toute l’énergie de la maison.",
@@ -95,7 +106,9 @@
     "categories": "Catégories du menu",
     "downloadEyebrow": "Version à emporter",
     "downloadText": "Téléchargez notre carte complète au format PDF.",
-    "freshlyPrepared": "Préparé avec soin"
+    "freshlyPrepared": "Préparé avec soin",
+    "urgent": "Important",
+    "paymentNotice": "Le paiement en ligne est maintenant disponible."
   },
   "menuTabs": {
     "mezzes": "Mezzés",
@@ -115,20 +128,15 @@
     "promoInvalid": "Code invalide",
     "promoRemove": "Retirer",
     "totalAfterPromo": "Total",
-
     "preparationMessage": "Votre sélection sera préparée avec soin par notre équipe.",
-
     "emptyTitle": "Un petit creux ?",
     "empty": "Votre panier est vide. Découvrez nos mezzés, grillades et douceurs libanaises.",
     "discoverMenu": "Découvrir le menu",
-
     "remove": "Retirer",
     "decrease": "Diminuer la quantité",
     "increase": "Augmenter la quantité",
-
     "subtotal": "Sous-total",
     "feesNote": "Livraison et frais calculés à l’étape suivante",
-
     "checkout": "Commander",
     "secureOrder": "Commande sécurisée · Préparation maison"
   },
@@ -147,7 +155,6 @@
     "openDaily": "Ouvert 7j/7",
     "copyright": "Tous droits réservés."
   },
-
   "contact": {
     "title1": "Nous",
     "title2": "Contacter",
@@ -186,21 +193,20 @@
     "bookEventBtn": "🎉 Organiser un événement privé",
     "eventTypes": "Événements : anniversaires, séminaires...",
     "pageTitle": "Réserver une table",
-    "pageSubtitle": "Remplissez le formulaire ci-dessous et nous vous confirmerons votre réservation dans les plus brefs délais.",
-    "hoursMonWed": "Lundi – Mercredi",
+"pageSubtitle": "Choisissez votre table directement sur le plan de la salle . Confirmation immédiate.",  
+  "hoursMonWed": "Lundi – Mercredi",
     "hoursThuSun": "Jeudi – Dimanche",
     "preferCall": "Préférez-vous appeler ?",
     "events": "Événements :"
   },
-
   "bookEvent": {
     "title": "Organiser un événement",
     "subtitle": "Choisissez le type d'événement pour accéder au formulaire adapté",
     "subtitleForm": "Remplissez le formulaire, nous vous recontactons rapidement",
     "preferCall": "Vous préférez nous appeler directement ?",
-    "back": "Retour"
+    "back": "Retour",
+    "mobileImageTitle": "Événements sur mesure"
   },
-
   "bookingForm": {
     "firstNamePlaceholder": "Prénom",
     "lastNamePlaceholder": "Nom *",
@@ -234,7 +240,6 @@
     "errPeopleRange": "Entre 1 et 42 personnes.",
     "errMaxWords": "Maximum 500 mots (actuellement {{count}})."
   },
-
   "eventForm": {
     "firstNamePlaceholder": "Prénom",
     "lastNamePlaceholder": "Nom *",
@@ -273,7 +278,9 @@
     "errTimeMin": "Heure minimum : {{time}}.",
     "errPeopleRequired": "Indiquez le nombre de personnes.",
     "errPeopleRange": "Entre 1 et 42 personnes.",
-    "errMaxWords": "Maximum 500 mots (actuellement {{count}})."
+    "errMaxWords": "Maximum 500 mots (actuellement {{count}}).",
+    "preferWhatsApp": "Contactez-nous sur WhatsApp",
+    "mobileImageTitle": "Événements sur mesure"
   },
   "chatbot": {
     "welcome": "Marhaba !  Je suis LaMiss, votre guide chez Miss Chawarma. Je peux vous conseiller sur notre menu, nos horaires, les réservations ou tout ce qui concerne le restaurant. Comment puis-je vous aider ?",
@@ -295,5 +302,50 @@
     "closeChat": "Fermer le chat",
     "frequentQuestions": "Questions fréquentes",
     "noReply": "Désolée, je n'ai pas pu répondre. Réessayez !"
+  },
+  "plan": {
+    "confirmationKicker": "C'est réservé",
+    "merci": "Votre table vous attend",
+    "merciTexteAuto": "Votre table est confirmée. Un e-mail de confirmation vient d'être envoyé à {{email}}.",
+    "merciTexteModif": "Votre réservation a bien été modifiée. Un e-mail récapitulatif vient d'être envoyé à {{email}}.",
+    "modifierReservation": "Modifier ma réservation",
+    "autre": "Réserver une autre table",
+    "keepReference": "Gardez votre référence : elle vous permet de modifier ou d'annuler votre réservation.",
+    "cancelReservation": "Annuler la réservation",
+    "cancelEyebrow": "Avant de continuer",
+    "cancelConfirmTitle": "Annuler cette réservation ?",
+    "cancelConfirmText": "La table {{table}} sera immédiatement libérée et pourra être réservée par un autre client.",
+    "guestCount": "{{count}} convive(s)",
+    "keepReservation": "Garder ma réservation",
+    "confirmCancellation": "Oui, annuler",
+    "cancelling": "Annulation...",
+    "cancelError": "Impossible d'annuler la réservation pour le moment. Veuillez réessayer.",
+    "cancelledKicker": "Réservation libérée",
+    "cancelledTitle": "Votre réservation est annulée",
+    "cancelledText": "La table est de nouveau disponible. Nous espérons vous accueillir une prochaine fois chez Miss Chawarma.",
+    "bookAgain": "Faire une nouvelle réservation",
+    "backHome": "Retour à l'accueil"
+  },
+  "cookies": {
+    "title": "Nous respectons votre vie privée",
+    "text": "Nous utilisons des cookies pour mesurer l'audience du site et améliorer votre expérience. Vous pouvez accepter, refuser, ou en savoir plus.",
+    "detailsText": "Cookies analytiques (Google Analytics) et publicitaires (Google Ads) — désactivables à tout moment depuis ce bandeau. Aucun cookie non essentiel n'est déposé tant que vous n'avez pas donné votre accord.",
+    "accept": "Tout accepter",
+    "reject": "Refuser",
+    "more": "En savoir plus",
+    "less": "Moins d'infos",
+    "close": "Fermer et refuser"
+  },
+  "mobileOrderDock": {
+    "kicker": "Une envie de Liban ?",
+    "houseMade": "Fait maison",
+    "orderOnline": "Commander en ligne",
+    "orderHint": "Votre commande en quelques clics",
+    "viewCart": "Voir mon panier",
+    "cartSummary": "{{count}} article(s) · {{total}}",
+    "bookTable": "Réserver une table",
+    "directions": "Itinéraire",
+    "openCartAria": "Ouvrir mon panier",
+    "orderAria": "Commander en ligne"
   }
 }

@@ -33,9 +33,7 @@ const BookTable = () => {
 
       <div
         className="fixed top-0 left-0 right-0 z-40 h-2"
-        onMouseEnter={() =>
-          window.dispatchEvent(new CustomEvent("showHeader"))
-        }
+        onMouseEnter={() => window.dispatchEvent(new CustomEvent("showHeader"))}
       />
 
       <main className="flex-1 pt-[86px]">
@@ -157,7 +155,8 @@ const BookTable = () => {
                   </p>
                 </div>
 
-                <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="mt-8 grid grid-cols-2 gap-3">
+                  {" "}
                   <div className="booktable-mini-card rounded-2xl bg-white/75 p-4">
                     <Clock3 className="mb-3 h-5 w-5" style={{ color: GREEN }} />
                     <p className="text-xs uppercase tracking-wider text-neutral-400">
@@ -167,7 +166,6 @@ const BookTable = () => {
                       11h30 – 00h00
                     </p>
                   </div>
-
                   <div className="booktable-mini-card rounded-2xl bg-white/75 p-4">
                     <Clock3 className="mb-3 h-5 w-5" style={{ color: GOLD }} />
                     <p className="text-xs uppercase tracking-wider text-neutral-400">
@@ -177,15 +175,21 @@ const BookTable = () => {
                       11h30 – 02h00
                     </p>
                   </div>
-
-                  <div className="booktable-mini-card rounded-2xl bg-white/75 p-4 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+                  <div className="booktable-mini-card col-span-2 rounded-2xl bg-white/75 p-4">
+                    {" "}
                     <MapPin className="mb-3 h-5 w-5" style={{ color: GREEN }} />
                     <p className="text-xs uppercase tracking-wider text-neutral-400">
                       {t("bookTable.address", "Adresse")}
                     </p>
-                    <p className="mt-1 font-bold" style={{ color: DARK_GREEN }}>
-                      128 Rue Oberkampf, Paris 11e
-                    </p>
+                    <a
+                      href="https://maps.app.goo.gl/hKKRSBeCKJscSZY46"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block font-bold transition hover:underline"
+                      style={{ color: DARK_GREEN }}
+                    >
+                      Miss Chawarma · 75011 Paris
+                    </a>
                   </div>
                 </div>
 
@@ -268,7 +272,8 @@ const BookTable = () => {
                 }}
               >
                 <Phone className="h-4 w-4" style={{ color: GREEN }} />
-                {t("bookTable.callRestaurant", "Restaurant")} · +33 1 42 52 60 48
+                {t("bookTable.callRestaurant", "Restaurant")} · +33 1 42 52 60
+                48
               </a>
 
               <button

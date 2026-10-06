@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useCart } from "@/context/CartContext";
 import {
@@ -15,8 +16,9 @@ import {
   FileText,
   ArrowUp,
 } from "lucide-react";
-import { MENU_SECTIONS_EN } from "../data/menuDataEn";
+//import { MENU_SECTIONS_EN } from "../data/menuDataEn";
 import DishCustomizationModal from "./DishCustomizationModal";
+import { useQuery } from "@tanstack/react-query";
 import type { CustomizationRules } from "./DishCustomizationModal";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +36,7 @@ interface CardProps {
 }
 
 // ─── Données menu (français — source) ─────────────────────────────────────────
-const MENU_SECTIONS: MenuSectionData[] = [
+/*const MENU_SECTIONS: MenuSectionData[] = [
   {
     title: "Mezzé chauds",
     subtitle: "Spécialités chaudes",
@@ -319,7 +321,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
     items: [
       {
         name: "Falafel",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Boulette de fèves et pois chiche.",
         image: "/images/kafta1.jpeg",
         composition: ["Fèves", "Pois chiche", "Épices", "Herbes fraîches"],
@@ -327,7 +329,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Sambousek fromage",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Rissolé de fromage feta, graines de nigelle et persil.",
         image: "/images/sambousik fromage.jpg",
         composition: [
@@ -340,7 +342,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Sambousek viande",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Rissolé de viande hachée et oignons.",
         image: "/images/samboussekViande.jpeg",
         composition: [
@@ -353,7 +355,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Rikakat",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Feuilleté farci au fromage feta parfumé aux herbes.",
         image: "/images/rikakat.jpeg",
         composition: ["Feuilleté", "Fromage feta", "Herbes"],
@@ -361,7 +363,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Sfiha Baalbakye",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Tartelette de viande aux épices.",
         image: "/images/sfihalahme.jpg",
         composition: ["Viande", "Épices", "Pâte"],
@@ -369,7 +371,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Sfiha aubergine",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Tartelette d'aubergine, tomates et pois chiches.",
         image: "/images/sfihaObergine.jpeg",
         composition: ["Aubergine", "Tomates", "Pois chiches", "Pâte"],
@@ -377,7 +379,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Fatayer",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Chaussons aux épinards citronnés.",
         image: "/images/fatayer.jpeg",
         composition: ["Épinards", "Citron", "Pâte"],
@@ -385,7 +387,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
       },
       {
         name: "Kebbé",
-        price: "8,90€ / 4 pièces · 15,90€ / 8 pièces",
+        price: "8€ / 4 pièces · 15,90€ / 8 pièces",
         short: "Boulettes de viande hachée au blé concassé et pignons de pin.",
         image: "/images/kebbe.jpeg",
         composition: ["Viande hachée", "Blé concassé", "Pignons de pin"],
@@ -802,6 +804,21 @@ const MENU_SECTIONS: MenuSectionData[] = [
         ],
         allergens: ["Gluten", "Sésame"],
       },
+      {
+        name: "Sawda poulet",
+        price: "8,90€",
+        short:
+          "Foie de volaille sauté à l'ail, coriandre, mélasse de grenade et citron.",
+        image: "/images/sawda.jpg",
+        composition: [
+          "Foie de volaille",
+          "Ail",
+          "Coriandre fraîche",
+          "Mélasse de grenade",
+          "Citron",
+        ],
+        allergens: [],
+      },
     ],
   },
   {
@@ -893,6 +910,21 @@ const MENU_SECTIONS: MenuSectionData[] = [
     subtitle: "Assiettes découverte",
     items: [
       {
+        name: "Foie volaille",
+        price: "14,90€",
+        short: "Foie de volaille avec 3 assortiments.",
+        image:
+          "https://i.ibb.co/xq69ZDD7/Chat-GPT-Image-Jun-8-2026-09-38-57-AM.png",
+        composition: ["Foie de volaille", "3 assortiments"],
+        allergens: [],
+      },
+    ],
+  },
+  {
+    title: "Plats Végétariens",
+    subtitle: "Formules et assiettes veggie",
+    items: [
+      {
         name: "Mrs. Végé'dream",
         price: "14,90€",
         short: "Hommous, taboulé, moutabal, fatayer, sfiha aubergine, falafel.",
@@ -920,15 +952,6 @@ const MENU_SECTIONS: MenuSectionData[] = [
         ],
         allergens: ["Gluten", "Sésame"],
       },
-      {
-        name: "Foie volaille",
-        price: "14,90€",
-        short: "Foie de volaille avec 3 assortiments.",
-        image:
-          "https://i.ibb.co/xq69ZDD7/Chat-GPT-Image-Jun-8-2026-09-38-57-AM.png",
-        composition: ["Foie de volaille", "3 assortiments"],
-        allergens: [],
-      },
     ],
   },
   {
@@ -941,7 +964,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
         short:
           "Steak haché, tomates, oignons grillés, coleslaw, cornichons servi avec 2 assortiments et frites.",
         image:
-          "https://i.ibb.co/nNgZNQDk/Chat-GPT-Image-Jun-8-2026-09-50-49-AM.png",
+          "/images/burger.jpeg",
         composition: [
           "Steak haché",
           "Tomates",
@@ -1153,7 +1176,7 @@ const MENU_SECTIONS: MenuSectionData[] = [
     ],
   },
 ];
-
+*/
 const PLACEHOLDER = "https://placehold.co/400x260/9ca89b/f7f0e4?text=🌯";
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -1178,9 +1201,9 @@ const ItemModal: React.FC<ModalProps> = ({ item, onClose, onAddToCart }) => {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
       onClick={handleBackdrop}
     >
@@ -1230,10 +1253,6 @@ const ItemModal: React.FC<ModalProps> = ({ item, onClose, onAddToCart }) => {
             </span>
           </div>
 
-          <p className="text-sm mb-5 leading-relaxed" style={{ color: "#555" }}>
-            {item.short}
-          </p>
-
           {item.composition && item.composition.length > 0 && (
             <div className="mb-4">
               <h4
@@ -1256,6 +1275,10 @@ const ItemModal: React.FC<ModalProps> = ({ item, onClose, onAddToCart }) => {
               </ul>
             </div>
           )}
+
+          <p className="text-sm mb-5 leading-relaxed" style={{ color: "#555" }}>
+            {item.short}
+          </p>
 
           {item.allergens && item.allergens.length > 0 && (
             <div
@@ -1317,7 +1340,8 @@ const ItemModal: React.FC<ModalProps> = ({ item, onClose, onAddToCart }) => {
           display: none;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -1356,6 +1380,7 @@ const MenuCard: React.FC<CardProps> = ({
       price: item.numericPrice ?? 0,
       priceLabel: item.price,
       image: item.image,
+      isBeignet: item.sectionKey === "Beignets",
     });
     setAdded(true);
     setBurstKey((v) => v + 1);
@@ -1641,7 +1666,41 @@ const MenuCard: React.FC<CardProps> = ({
               scale(0.15);
           }
         }
-
+@media (max-width: 640px) {
+  .menu-card-image-wrap {
+    height: 7.5rem; /* h-30 environ, au lieu de h-48 */
+  }
+  .menu-dish-card .relative.p-5 {
+    padding: 0.85rem;
+  }
+  .menu-dish-card h4 {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+  .menu-dish-card p.line-clamp-2 {
+    font-size: 0.72rem;
+    min-height: 32px;
+    -webkit-line-clamp: 2;
+  }
+  .menu-add-button {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .menu-add-button svg {
+    width: 1rem;
+    height: 1rem;
+  }
+  span[style*="Découvrir"],
+  .menu-dish-card .absolute.left-4.top-4 {
+    display: none; /* le badge "Découvrir" au survol n'a pas de sens au tactile */
+  }
+  .menu-dish-card .absolute.right-4.top-4 {
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.65rem;
+  }
+}
         @media (prefers-reduced-motion: reduce) {
           .menu-dish-card,
           .menu-card-shine,
@@ -1691,6 +1750,7 @@ interface MenuItem {
   composition?: string[];
   allergens?: string[];
   hidden?: boolean;
+  sectionKey?: string; // ⟵ AJOUT : nom FR de la catégorie d'origine (ex. "Beignets")
   customizationRules?: CustomizationRules | null; // ⟵ AJOUT
 }
 interface ApiDish {
@@ -1734,17 +1794,20 @@ interface NormalizedSection {
   items: MenuItem[];
 }
 
-const buildStaticSections = (lang: "fr" | "en"): NormalizedSection[] =>
+/*const buildStaticSections = (lang: "fr" | "en"): NormalizedSection[] =>
   MENU_SECTIONS.map((section, i) => {
     const localized = lang === "en" ? MENU_SECTIONS_EN[i] : section;
     return {
       key: section.title, // le titre FR sert de clé stable, y compris en affichage EN
       title: localized?.title ?? section.title,
       subtitle: localized?.subtitle ?? section.subtitle,
-      items: localized?.items ?? section.items,
+      items: (localized?.items ?? section.items).map((it) => ({
+        ...it,
+        sectionKey: section.title,
+      })),
     };
   });
-
+*/
 const buildApiSections = (
   categories: ApiCategory[],
   lang: "fr" | "en",
@@ -1765,6 +1828,7 @@ const buildApiSections = (
       composition: lang === "en" ? d.composition_en : d.composition_fr,
       allergens: lang === "en" ? d.allergens_en : d.allergens_fr,
       numericPrice: d.price,
+      sectionKey: cat.name_fr, // ⟵ AJOUT
       customizationRules: d.customization_rules, // ⟵ AJOUT
     })),
   }));
@@ -1794,12 +1858,15 @@ const TAB_GROUPS: { labelKey: string; matchKeys: string[] }[] = [
   {
     labelKey: "menuTabs.platsGrillades",
     matchKeys: [
+      "Plat du Chef",
       "Plats",
       "Plats Chawarma",
       "Grillades au feu de bois",
       "Plats Découvertes",
+      "Plats Végétariens",
     ],
   },
+  
   { labelKey: "menuTabs.desserts", matchKeys: ["Desserts"] },
   { labelKey: "menuTabs.boissons", matchKeys: ["Boissons"] },
 ];
@@ -1811,9 +1878,7 @@ const MenuSection = () => {
   const { t, i18n } = useTranslation();
   const lang: "fr" | "en" = i18n.resolvedLanguage === "en" ? "en" : "fr";
 
-  const [apiCategories, setApiCategories] = React.useState<
-    ApiCategory[] | null
-  >(null);
+
   const [activeTabIndex, setActiveTabIndex] = React.useState(0);
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
   const [customizeItem, setCustomizeItem] = React.useState<MenuItem | null>(
@@ -1835,30 +1900,22 @@ const MenuSection = () => {
       price: item.numericPrice ?? 0,
       priceLabel: item.price,
       image: item.image,
+      isBeignet: item.sectionKey === "Beignets",
     });
     setSelectedItem(null);
   };
-  React.useEffect(() => {
-    let cancelled = false;
 
-    fetch(`${API_URL}/api/menu`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: ApiCategory[]) => {
-        if (!cancelled && Array.isArray(data) && data.length > 0) {
-          setApiCategories(data);
-        }
-      })
-      .catch(() => {
-        console.warn("Menu API indisponible, utilisation des données locales.");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: apiCategories } = useQuery({
+    queryKey: ["menu"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/menu`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: ApiCategory[] = await res.json();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // le menu est considéré "frais" pendant 5 min — pas de re-fetch inutile
+    gcTime: 30 * 60 * 1000, // garde les données en cache 30 min même après avoir quitté la page
+  });
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -1872,10 +1929,7 @@ const MenuSection = () => {
   }, []);
 
   const sections: NormalizedSection[] = React.useMemo(
-    () =>
-      apiCategories
-        ? buildApiSections(apiCategories, lang)
-        : buildStaticSections(lang),
+    () => (apiCategories ? buildApiSections(apiCategories, lang) : []),
     [apiCategories, lang],
   );
   const dishesByCategory = React.useMemo(() => {
@@ -1927,13 +1981,114 @@ const MenuSection = () => {
 
   const handleTabChange = (index: number) => {
     setActiveTabIndex(index);
+    setSelectedSectionKey(null);
+    setActiveSectionKey(null);
 
     window.requestAnimationFrame(() => {
-      document.getElementById("menu-content-start")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      const el = document.getElementById("menu-content-start");
+      if (el) {
+        const offset = navHeight + NAV_STICKY_TOP + 18;
+        const top = el.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
     });
+  };
+
+  const [activeSectionKey, setActiveSectionKey] = React.useState<string | null>(
+    null,
+  );
+
+  // Filtre réellement appliqué aux plats.
+  // null = afficher toutes les sous-catégories de l'onglet principal.
+  const [selectedSectionKey, setSelectedSectionKey] = React.useState<
+    string | null
+  >(null);
+
+  const displayedSections = selectedSectionKey
+    ? visibleSections.filter((section) => section.key === selectedSectionKey)
+    : visibleSections;
+
+  const filterToSubsection = (key: string | null) => {
+    setSelectedSectionKey(key);
+    setActiveSectionKey(key);
+
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById("menu-content-start");
+      if (el) {
+        const offset = navHeight + NAV_STICKY_TOP + 18;
+        const top = el.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    });
+  };
+
+  // La barre de navigation reste visible au scroll via une vraie fixation
+  // pilotée en JS (position: fixed), plus fiable que position: sticky quand
+  // un parent de la page a un overflow qui casse le comportement natif.
+  const NAV_STICKY_TOP = 88; // à ajuster si la hauteur du header change
+  const navRef = React.useRef<HTMLDivElement>(null);
+  const [navOffsetTop, setNavOffsetTop] = React.useState<number | null>(null);
+  const [navHeight, setNavHeight] = React.useState(0);
+  const [navPinned, setNavPinned] = React.useState(false);
+
+  React.useEffect(() => {
+    if (navPinned) return; // ne pas re-mesurer une fois fixé (devient relatif au viewport)
+
+    const measure = () => {
+      if (navRef.current) {
+        const rect = navRef.current.getBoundingClientRect();
+        setNavOffsetTop(rect.top + window.scrollY);
+        setNavHeight(rect.height);
+      }
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navPinned, tabs.length, visibleSections.length]);
+
+  React.useEffect(() => {
+    const handleNavScroll = () => {
+      if (navOffsetTop == null) return;
+      setNavPinned(window.scrollY > navOffsetTop - NAV_STICKY_TOP);
+    };
+
+    handleNavScroll();
+    window.addEventListener("scroll", handleNavScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleNavScroll);
+  }, [navOffsetTop]);
+
+  // Scroll-spy : met en avant la sous-section actuellement visible dans les
+  // filtres de droite, pour une navigation plus lisible.
+  React.useEffect(() => {
+    if (selectedSectionKey || visibleSections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const key = entry.target.getAttribute("data-section-key");
+            if (key) setActiveSectionKey(key);
+          }
+        });
+      },
+      { rootMargin: "-150px 0px -70% 0px", threshold: 0 },
+    );
+
+    visibleSections.forEach((section) => {
+      const el = document.getElementById(
+        `menu-subsection-${slugify(section.key)}`,
+      );
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSectionKey, visibleSections.map((s) => s.key).join("|")]);
+
+  const scrollToSubsection = (key: string) => {
+    filterToSubsection(key);
   };
 
   const scrollToTop = () => {
@@ -1950,6 +2105,28 @@ const MenuSection = () => {
       style={{ background: "#f7f0e4" }}
     >
       <div className="container-width">
+        {/* Payment notice banner */}
+        <div
+          className="mx-auto mb-8 max-w-3xl rounded-2xl border px-5 py-3 text-center text-sm font-medium"
+          style={{
+            background: "linear-gradient(135deg, #fbce8b22, #bfa43522)",
+            borderColor: "rgba(196,125,14,0.25)",
+            color: "#8a5800",
+            fontFamily: "'Fraunces', serif",
+          }}
+        >
+          <span
+            className="mr-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+            style={{ background: "#c47d0e", color: "#fff8d8" }}
+          >
+            {t("menuPage.urgent", "Important")}
+          </span>
+          {t(
+            "menuPage.paymentNotice",
+            "Online payment is now available.",
+          )}
+        </div>
+
         {/* Main menu heading */}
         <div className="mx-auto max-w-4xl text-center">
           <p
@@ -1974,43 +2151,100 @@ const MenuSection = () => {
           </p>
         </div>
 
-        {/* Primary navigation: categories */}
-        <nav
-          className="menu-category-shell mx-auto mt-8 max-w-5xl"
-          aria-label={t("menuPage.categories", "Catégories du menu")}
-        >
-          <div className="menu-category-scroll flex gap-2 overflow-x-auto p-2 md:justify-center">
-            {tabs.map((tab, index) => {
-              const Icon = tab.Icon;
-              const active = activeTabIndex === index;
+        {/* Primary + secondary navigation: categories and subsection filters, one cohesive shell that pins on scroll */}
+        <div className="mt-8">
+          {navPinned && <div style={{ height: navHeight }} />}
 
-              return (
-                <button
-                  key={`${tab.label}-${index}`}
-                  type="button"
-                  onClick={() => handleTabChange(index)}
-                  className={`menu-category-tab ${
-                    active ? "menu-category-tab-active" : ""
-                  }`}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <span className="menu-category-icon">
-                    <Icon className="h-4 w-4" strokeWidth={1.9} />
-                  </span>
+          <div
+            ref={navRef}
+            className={`menu-nav-shell mx-auto ${
+              navPinned ? "menu-nav-shell-pinned" : ""
+            }`}
+            style={navPinned ? { top: NAV_STICKY_TOP } : undefined}
+          >
+            <div className="menu-filter-header">
+              <div className="menu-filter-title-wrap">
+                <span className="menu-filter-kicker">
+                  {t("menuPage.filterBy", "Filtrer le menu")}
+                </span>
+                <strong className="menu-filter-current">
+                  {currentTab?.label}
+                </strong>
+              </div>
 
-                  <span>{tab.label}</span>
+              <nav
+                className="menu-category-scroll flex gap-2 overflow-x-auto"
+                aria-label={t("menuPage.categories", "Catégories du menu")}
+              >
+                {tabs.map((tab, index) => {
+                  const Icon = tab.Icon;
+                  const active = activeTabIndex === index;
 
-                  {active && (
-                    <span
-                      className="menu-category-active-dot"
-                      aria-hidden="true"
-                    />
+                  return (
+                    <button
+                      key={`${tab.label}-${index}`}
+                      type="button"
+                      onClick={() => handleTabChange(index)}
+                      className={`menu-category-tab ${
+                        active ? "menu-category-tab-active" : ""
+                      }`}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <span className="menu-category-icon">
+                        <Icon className="h-4 w-4" strokeWidth={1.9} />
+                      </span>
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {visibleSections.length > 1 && (
+              <>
+                <div className="menu-nav-divider" />
+
+                <div
+                  className="menu-subfilter-scroll flex items-center justify-center gap-2 overflow-x-auto"
+                  aria-label={t(
+                    "menuPage.subfilters",
+                    "Filtres de la catégorie",
                   )}
-                </button>
-              );
-            })}
+                >
+                  <button
+                    type="button"
+                    onClick={() => filterToSubsection(null)}
+                    className={`menu-subfilter-chip ${
+                      selectedSectionKey === null
+                        ? "menu-subfilter-chip-active"
+                        : ""
+                    }`}
+                  >
+                    {t("menuPage.all", "Tous")}
+                  </button>
+
+                  {visibleSections.map((section) => {
+                    const active = selectedSectionKey === section.key;
+
+                    return (
+                      <button
+                        key={section.key}
+                        type="button"
+                        onClick={() => filterToSubsection(section.key)}
+                        className={`menu-subfilter-chip ${
+                          active ? "menu-subfilter-chip-active" : ""
+                        }`}
+                        aria-pressed={active}
+                      >
+                        {section.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
-        </nav>
+        </div>
 
         {/* Secondary action: downloadable PDFs */}
         <div className="menu-download-row mx-auto mt-6 max-w-3xl">
@@ -2039,6 +2273,8 @@ const MenuSection = () => {
             <a
               href="/menus/MENU MISS CHAWARMA VF FR.pdf"
               download
+              target="_blank"
+              rel="noopener noreferrer"
               className="menu-download-button menu-download-button-primary"
             >
               <Download className="h-4 w-4" />
@@ -2049,6 +2285,8 @@ const MenuSection = () => {
             <a
               href="/menus/MENU MISS CHAWARMA VF EN.pdf"
               download
+              target="_blank"
+              rel="noopener noreferrer"
               className="menu-download-button"
             >
               <Download className="h-4 w-4" />
@@ -2066,10 +2304,12 @@ const MenuSection = () => {
 
         {/* Food sections */}
         <div id="menu-content-start" className="scroll-mt-28 pt-8">
-          {visibleSections.map((section, sectionIndex) => (
+          {displayedSections.map((section, sectionIndex) => (
             <div
               key={section.key}
-              className="mb-16"
+              id={`menu-subsection-${slugify(section.key)}`}
+              data-section-key={section.key}
+              className="mb-12 scroll-mt-36"
               style={
                 {
                   "--section-delay": `${sectionIndex * 90}ms`,
@@ -2106,7 +2346,8 @@ const MenuSection = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 md:gap-6 lg:grid-cols-3">
+                {" "}
                 {section.items
                   .filter((item) => !item.hidden)
                   .map((item, itemIndex) => (
@@ -2167,83 +2408,180 @@ const MenuSection = () => {
           isolation: isolate;
         }
 
-        .menu-category-shell {
-          border: 1px solid rgba(31,107,45,0.10);
-          border-radius: 26px;
-          background: rgba(255,255,255,0.52);
+        .menu-nav-shell {
+          /*
+            La largeur suit automatiquement le contenu.
+            Si de nouvelles catégories arrivent depuis la base, la barre grandit
+            jusqu'à la largeur disponible, puis devient scrollable horizontalement.
+          */
+          width: fit-content;
+          max-width: calc(100vw - 36px);
+          overflow: hidden;
+          border: 1px solid rgba(31,107,45,0.11);
+          border-radius: 24px;
+          background: rgba(255,253,248,0.97);
           box-shadow:
-            0 14px 36px rgba(31,60,30,0.07),
-            inset 0 1px 0 rgba(255,255,255,0.72);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+            0 18px 45px rgba(31,60,30,0.11),
+            inset 0 1px 0 rgba(255,255,255,0.85);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          transition:
+            width .28s ease,
+            max-width .28s ease,
+            box-shadow .28s ease,
+            border-color .28s ease,
+            border-radius .28s ease;
         }
 
-        .menu-category-scroll {
-          scrollbar-width: none;
+        .menu-nav-shell-pinned {
+          position: fixed;
+          left: 50%;
+          right: auto;
+          width: max-content;
+          max-width: calc(100vw - 36px);
+          z-index: 60;
+          border-radius: 20px;
+          border-color: rgba(31,107,45,0.16);
+          box-shadow:
+            0 16px 40px rgba(18,63,29,0.16),
+            0 1px 0 rgba(255,255,255,0.9) inset;
+          transform: translateX(-50%);
+          animation: menuNavPinIn 0.26s cubic-bezier(0.16,1,0.3,1);
         }
 
-        .menu-category-scroll::-webkit-scrollbar {
+        @keyframes menuNavPinIn {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -8px) scale(.99);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
+          }
+        }
+
+        .menu-filter-header {
+          display: flex;
+          width: max-content;
+          max-width: 100%;
+          align-items: center;
+          gap: 18px;
+          padding: 10px 12px 10px 16px;
+        }
+
+        .menu-filter-title-wrap {
+          flex: 0 0 auto;
+          min-width: 126px;
+          padding-right: 16px;
+          border-right: 1px solid rgba(31,107,45,.10);
+        }
+
+        .menu-filter-kicker {
+          display: block;
+          color: #b2770b;
+          font-size: 8px;
+          font-weight: 850;
+          letter-spacing: .16em;
+          text-transform: uppercase;
+        }
+
+        .menu-filter-current {
+          display: block;
+          margin-top: 2px;
+          color: #123f1d;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 15px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .menu-nav-divider {
+          height: 1px;
+          margin: 0 14px;
+          min-width: 0;
+          background:
+            linear-gradient(
+              90deg,
+              transparent,
+              rgba(31,107,45,0.12) 12%,
+              rgba(196,125,14,0.14) 50%,
+              rgba(31,107,45,0.12) 88%,
+              transparent
+            );
+        }
+
+.menu-category-scroll {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 8px !important;
+  padding: 4px 12px !important;
+  overflow-x: auto !important;
+  justify-content: flex-start !important;
+  scroll-padding-inline: 12px;
+  scrollbar-width: none;
+}
+
+        .menu-category-scroll::-webkit-scrollbar,
+        .menu-subfilter-scroll::-webkit-scrollbar {
           display: none;
         }
 
         .menu-category-tab {
           position: relative;
           display: inline-flex;
-          min-height: 48px;
+          min-height: 40px;
           flex: 0 0 auto;
           align-items: center;
-          gap: 9px;
-          border-radius: 19px;
-          padding: 10px 16px;
-          color: #536454;
-          font-size: 13px;
-          font-weight: 650;
+          gap: 7px;
+          border: 1px solid transparent;
+          border-radius: 14px;
+          padding: 7px 11px;
+          color: #5c695d;
+          font-size: 12px;
+          font-weight: 700;
           white-space: nowrap;
           transition:
-            color 0.32s ease,
-            background 0.32s ease,
-            transform 0.32s cubic-bezier(0.16,1,0.3,1),
-            box-shadow 0.32s ease;
+            color 0.25s ease,
+            background 0.25s ease,
+            transform 0.25s cubic-bezier(0.16,1,0.3,1),
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
         }
 
         .menu-category-tab:hover {
           color: #1f6b2d;
-          background: rgba(31,107,45,0.065);
-          transform: translateY(-2px);
+          border-color: rgba(31,107,45,.10);
+          background: rgba(31,107,45,0.055);
+          transform: translateY(-1px);
         }
 
         .menu-category-tab-active {
           color: #fff8d8;
-          background:
-            linear-gradient(135deg, #1f6b2d, #2d8a3e);
-          box-shadow:
-            0 10px 22px rgba(31,107,45,0.24),
-            inset 0 1px 0 rgba(255,255,255,0.15);
-          transform: translateY(-2px);
-          animation: menuTabSpring 0.48s cubic-bezier(0.16,1,0.3,1);
+          border-color: rgba(31,107,45,.30);
+          background: linear-gradient(135deg, #1f6b2d, #2f843b);
+          box-shadow: 0 8px 18px rgba(31,107,45,0.20);
+          transform: translateY(-1px);
         }
 
         .menu-category-tab-active:hover {
           color: #fff8d8;
-          background:
-            linear-gradient(135deg, #1f6b2d, #2d8a3e);
+          background: linear-gradient(135deg, #1f6b2d, #2f843b);
         }
 
         .menu-category-icon {
           display: flex;
-          width: 29px;
-          height: 29px;
+          width: 26px;
+          height: 26px;
           align-items: center;
           justify-content: center;
-          border-radius: 11px;
+          border-radius: 9px;
           background: rgba(31,107,45,0.08);
-          transition:
-            transform 0.3s ease,
-            background 0.3s ease;
+          transition: transform 0.25s ease, background 0.25s ease;
         }
 
         .menu-category-tab:hover .menu-category-icon {
-          transform: rotate(-7deg) scale(1.08);
+          transform: rotate(-5deg) scale(1.05);
         }
 
         .menu-category-tab-active .menu-category-icon {
@@ -2252,12 +2590,75 @@ const MenuSection = () => {
         }
 
         .menu-category-active-dot {
-          width: 5px;
-          height: 5px;
+          display: none;
+        }
+
+        .menu-subfilter-scroll {
+          width: 100%;
+          max-width: 100%;
+          scrollbar-width: none;
+          padding: 9px 12px 10px;
+          background:
+            linear-gradient(90deg, rgba(247,240,228,.42), rgba(196,125,14,.035));
+        }
+
+        .menu-subfilter-label {
+          display: none;
+        }
+
+        .menu-subfilter-chip {
+          display: inline-flex;
+          min-height: 34px;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: 7px;
+          border: 1px solid rgba(31,107,45,0.13);
           border-radius: 999px;
-          background: #e5c77e;
-          box-shadow: 0 0 0 4px rgba(229,199,126,0.12);
-          animation: menuActiveDot 1.8s ease-in-out infinite;
+          padding: 6px 11px 6px 7px;
+          color: #556356;
+          background: rgba(255,255,255,.72);
+          font-size: 11px;
+          font-weight: 750;
+          white-space: nowrap;
+          box-shadow: 0 3px 10px rgba(31,60,30,.035);
+          transition:
+            color .22s ease,
+            background .22s ease,
+            border-color .22s ease,
+            transform .22s ease,
+            box-shadow .22s ease;
+        }
+
+        .menu-subfilter-chip:hover {
+          color: #1f6b2d;
+          border-color: rgba(31,107,45,.24);
+          background: #fffdf8;
+          transform: translateY(-1px);
+        }
+
+        .menu-subfilter-chip-active {
+          color: #7b5205;
+          border-color: rgba(196,125,14,.34);
+          background: linear-gradient(135deg, #fff4d7, #f6e6b7);
+          box-shadow: 0 7px 18px rgba(196,125,14,.12);
+        }
+
+        .menu-subfilter-count {
+          display: inline-flex;
+          min-width: 22px;
+          height: 22px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          color: #1f6b2d;
+          background: rgba(31,107,45,.09);
+          font-size: 9px;
+          font-weight: 850;
+        }
+
+        .menu-subfilter-chip-active .menu-subfilter-count {
+          color: #fff8d8;
+          background: #c47d0e;
         }
 
         .menu-download-row {
@@ -2505,20 +2906,71 @@ const MenuSection = () => {
         }
 
         @media (max-width: 767px) {
-          .menu-category-shell {
-            margin-left: -2px;
-            margin-right: -2px;
-            border-radius: 22px;
+.menu-nav-shell {
+  width: calc(100vw - 24px);
+  max-width: calc(100vw - 24px);
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 18px;
+}
+          .menu-nav-shell-pinned {
+            left: 50%;
+            right: auto;
+            width: max-content;
+            max-width: calc(100vw - 16px);
+            border-radius: 16px;
+            transform: translateX(-50%);
           }
 
-          .menu-category-scroll {
-            justify-content: flex-start;
+          .menu-filter-header {
+            display: block;
+            padding: 8px 9px 7px;
           }
 
-          .menu-category-tab {
-            min-height: 44px;
-            padding: 8px 13px;
-            font-size: 12px;
+          .menu-filter-title-wrap {
+            display: none;
+          }
+
+.menu-category-scroll {
+  justify-content: flex-start;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.menu-category-tab {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: max-content !important;
+  min-height: 42px;
+  padding: 7px 12px;
+  gap: 6px;
+  justify-content: center;
+  font-size: 11px;
+  white-space: nowrap;
+}
+     
+.menu-category-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.menu-subfilter-scroll {
+  width: 100%;
+  justify-content: flex-start !important;
+  padding: 7px 12px 8px;
+  gap: 7px;
+  overflow-x: auto;
+  scroll-padding-inline: 12px;
+}
+.menu-subfilter-scroll::after {
+  content: "";
+  flex: 0 0 8px;
+}
+          .menu-subfilter-chip {
+            min-height: 32px;
+            padding: 5px 11px;
+            font-size: 10px;
           }
 
           .menu-download-row {
@@ -2567,5 +3019,15 @@ const MenuSection = () => {
     </section>
   );
 };
+
+// Transforme une clé de section (nom FR) en identifiant DOM stable
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export default MenuSection;

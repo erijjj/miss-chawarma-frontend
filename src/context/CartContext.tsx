@@ -8,9 +8,10 @@ export interface CartItem {
   image?: string;
   quantity: number;
   lineId?: string;
+  isBeignet?: boolean; // ⟵ active la tarification par palier (2,50€/pièce, 6 pour 12€, 12 pour 21,90€)
   customizations?: {
     removed?: string[];
-    choices?: Record<string, { dish_ids: number[]; alternative?: string }> // ex: { "Sauce": ["Sauce toum"] }
+    choices?: Record<string, { dish_ids: number[]; alternative?: string }>; // ex: { "Sauce": ["Sauce toum"] }
   };
 }
 
@@ -22,6 +23,8 @@ interface CartContextValue {
   clearCart: () => void;
   subtotal: number;
   itemCount: number;
+  beignetsCount: number; // nombre total de beignets dans le panier
+  beignetsDiscount: number; // économie réalisée grâce aux paliers (montant positif)
   isDrawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -30,6 +33,37 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "miss-chawarma-cart";
+
+// ─── Tarification par palier pour les beignets ────────────────────────────────
+// Prix "à emporter / livraison" : 2,50€/pièce · 6 pièces = 12€ · 12 pièces = 21,90€
+//
+// Les paliers s'appliquent aussi partiellement : 7 beignets = 1 lot de 6 (12€)
+// + 1 pièce (2,50€) = 14,50€, et non 7 × 2,50€.
+//
+// Les paliers sont strictement dégressifs (2,50€/pc à l'unité, 2€/pc par 6,
+// 1,825€/pc par 12), donc l'algorithme glouton — consommer d'abord les plus
+// gros paliers — donne toujours le prix minimal possible.
+const BEIGNET_UNIT_PRICE = 2.5;
+const BEIGNET_SIX_PRICE = 12;
+const BEIGNET_DOZEN_PRICE = 21.9;
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+const calcBeignetsTierTotal = (qty: number): number => {
+  if (qty <= 0) return 0;
+
+  const dozens = Math.floor(qty / 12);
+  let remainder = qty % 12;
+
+  const sixes = Math.floor(remainder / 6);
+  remainder = remainder % 6;
+
+  return round2(
+    dozens * BEIGNET_DOZEN_PRICE +
+      sixes * BEIGNET_SIX_PRICE +
+      remainder * BEIGNET_UNIT_PRICE,
+  );
+};
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -94,7 +128,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
   };
   const clearCart = () => setItems([]);
 
-  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  // Total "au prix unitaire" — sert d'affichage ligne par ligne (inchangé) et
+  // de base pour calculer l'économie réalisée sur les beignets.
+  const flatSubtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+  const beignetsCount = items
+    .filter((i) => i.isBeignet)
+    .reduce((sum, i) => sum + i.quantity, 0);
+
+  const beignetsFlatTotal = items
+    .filter((i) => i.isBeignet)
+    .reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+  const beignetsTierTotal = calcBeignetsTierTotal(beignetsCount);
+
+  // Économie réalisée grâce aux paliers (jamais négative, au cas où le
+  // prix unitaire en base ne serait pas exactement 2,50€).
+  const beignetsDiscount = round2(
+    Math.max(0, beignetsFlatTotal - beignetsTierTotal),
+  );
+
+  const subtotal = round2(flatSubtotal - beignetsDiscount);
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (
@@ -107,6 +161,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
         clearCart,
         subtotal,
         itemCount,
+        beignetsCount,
+        beignetsDiscount,
         isDrawerOpen,
         openDrawer: () => setIsDrawerOpen(true),
         closeDrawer: () => setIsDrawerOpen(false),

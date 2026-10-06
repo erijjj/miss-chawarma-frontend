@@ -74,7 +74,7 @@ const Chefs = () => {
     t("chefs.specialty3"),
   ];
 
-  const chefNameWords = ["Mahmoud", "Chahine"];
+  const chefNameWords = ["C",".","M"];
 
   return (
     <section
@@ -122,7 +122,7 @@ const Chefs = () => {
           <div className="chef-photo-stage relative min-h-[400px] overflow-hidden lg:h-full lg:min-h-0">
             <img
               src={Chef1}
-              alt={`Mahmoud Chahine - ${t("chefs.chefTitle")}`}
+              alt={`C. M.  - ${t("chefs.chefTitle")}`}
               className="chef-main-photo absolute inset-0 h-full w-full object-cover object-center"
             />
 
@@ -188,7 +188,7 @@ const Chefs = () => {
 
             <div
               className="chef-name-write-wrap mt-2"
-              aria-label="Mahmoud Chahine"
+              aria-label="C. M."
             >
               <h3
                 className="chef-handwritten-name text-5xl leading-[1] sm:text-6xl lg:text-[4.2rem]"
@@ -254,14 +254,14 @@ const Chefs = () => {
             </p>
 
             {/* Values */}
-            <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-2.5">
               {values.map((value, index) => {
                 const Icon = value.icon;
 
                 return (
                   <div
                     key={value.title}
-                    className="chef-value-card group flex min-w-0 flex-col items-start gap-2 rounded-[16px] p-3"
+                    className="chef-value-card group flex min-w-0 flex-col items-start gap-1.5 rounded-[14px] p-2 sm:gap-2 sm:rounded-[16px] sm:p-3"
                     style={{
                       animationDelay: `${0.45 + index * 0.12}s`,
                       background:
@@ -275,7 +275,7 @@ const Chefs = () => {
                     }}
                   >
                     <span
-                      className="flex h-8 w-8 items-center justify-center rounded-lg"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8"
                       style={{
                         color: index === 1 ? GOLD : GREEN,
                         background:
@@ -284,17 +284,17 @@ const Chefs = () => {
                             : "rgba(31,107,45,0.10)",
                       }}
                     >
-                      <Icon className="h-4.5 w-4.5" />
+                      <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                     </span>
 
                     <span>
                       <span
-                        className="block text-[13px] font-semibold"
+                        className="block text-[11px] font-semibold leading-tight sm:text-[13px]"
                         style={{ color: DARK_GREEN }}
                       >
                         {value.title}
                       </span>
-                      <span className="mt-1 block text-[11px] leading-4 text-neutral-500">
+                      <span className="mt-1 block text-[9px] leading-[1.3] text-neutral-500 sm:text-[11px] sm:leading-4">
                         {value.text}
                       </span>
                     </span>
@@ -313,7 +313,7 @@ const Chefs = () => {
                 }}
               />
               <span className="chef-autograph text-3xl" style={{ color: GOLD }}>
-                Mahmoud
+                M.
               </span>
             </div>
           </div>

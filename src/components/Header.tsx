@@ -162,7 +162,7 @@ const Header = () => {
       />
 
       <nav className="mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8">
-        <div className="flex h-[74px] items-center justify-between md:h-[86px]">
+        <div className="flex h-[82px] items-center justify-between md:h-[86px]">
           {/* Logo */}
           <button
             type="button"
@@ -173,7 +173,7 @@ const Header = () => {
             <img
               src={useWhiteElements ? LogoBlanc : LogoVert}
               alt="Miss Chawarma - Restaurant libanais"
-              className="h-[58px] w-auto object-contain transition duration-300 hover:scale-[1.03] hover:opacity-90 md:h-[68px]"
+              className="h-[62px] w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,.15)] transition duration-300 hover:scale-[1.03] hover:opacity-90 md:h-[68px]"
             />
           </button>
 
@@ -245,11 +245,43 @@ const Header = () => {
             </button>
           </div>
 
-          {/* Actions mobile/tablette */}
-          <div className="flex items-center gap-2 lg:hidden">
-            <LanguageSwitcher
-              textColor={useWhiteElements ? "#ffffff" : GREEN}
-            />
+          {/* Actions mobile */}
+          <div className="flex items-center gap-1.5 md:hidden">
+            <div className="rounded-full bg-black/15 p-0.5 backdrop-blur-sm">
+              <LanguageSwitcher textColor={useWhiteElements ? "#ffffff" : GREEN} />
+            </div>
+
+            <button
+              type="button"
+              onClick={openDrawer}
+              className={`relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/10 backdrop-blur-sm transition active:scale-95 ${textColorClass}`}
+              aria-label={t("cart.title", "Votre panier")}
+            >
+              <ShoppingBag className="h-[21px] w-[21px]" />
+              {itemCount > 0 && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                  style={{ background: GOLD }}
+                >
+                  {itemCount > 9 ? "9+" : itemCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen((open) => !open)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/10 backdrop-blur-sm transition active:scale-95 ${textColorClass}`}
+              aria-label={t("nav.toggleMenu", "Ouvrir le menu")}
+              aria-expanded={isMenuOpen}
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
+
+          {/* Tablette : comportement actuel */}
+          <div className="hidden items-center gap-2 md:flex lg:hidden">
+            <LanguageSwitcher textColor={useWhiteElements ? "#ffffff" : GREEN} />
 
             <button
               type="button"
@@ -258,7 +290,6 @@ const Header = () => {
               aria-label={t("cart.title", "Votre panier")}
             >
               <ShoppingBag className="h-[21px] w-[21px]" />
-
               {itemCount > 0 && (
                 <span
                   className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
@@ -276,11 +307,7 @@ const Header = () => {
               aria-label={t("nav.toggleMenu", "Ouvrir le menu")}
               aria-expanded={isMenuOpen}
             >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>

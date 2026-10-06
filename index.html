@@ -1,15 +1,28 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Consent Mode v2 — état par défaut : tout refusé tant que l'utilisateur n'a pas choisi -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'analytics_storage': 'denied',
+        'wait_for_update': 500
+      });
+    </script>
+
     <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-SYEF0WYEDW"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-SYEF0WYEDW');
-  gtag('config', 'AW-18328707444');
-</script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SYEF0WYEDW"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-SYEF0WYEDW');
+      gtag('config', 'AW-18328707444');
+    </script>
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -45,7 +58,7 @@
     <meta name="twitter:site" content="@misschawarma" />
     <meta
       name="twitter:title"
-      content="Miss Chawarma – Restaurant libanais à Paris"
+      content="Miss Chawarma - Restaurant libanais à Paris"
     />
     <meta
       name="twitter:description"

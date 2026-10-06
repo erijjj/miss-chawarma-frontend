@@ -91,14 +91,6 @@ const Contact = () => {
 
       setStatus("success");
 
-      fetch("https://formspree.io/f/mvzjdobn", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(fields),
-      }).catch(() => {});
 
       setFields({ name: "", email: "", message: "" });
     } catch {
@@ -187,7 +179,7 @@ const Contact = () => {
             data-aos="fade-right"
           >
             <img
-              src="/images/contact.png"
+              src="/images/contact.jpg"
               alt="Miss Chawarma"
               className="contact-visual-image absolute inset-0 h-full w-full object-cover"
             />
@@ -397,7 +389,7 @@ const Contact = () => {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
           {infoCards.map((item, index) => {
             const Icon = item.icon;
             const isGold = item.color === GOLD;
@@ -769,6 +761,7 @@ const Contact = () => {
         }
 .contact-info-card {
   position: relative;
+  min-width: 0;
   min-height: 218px;
   overflow: hidden;
   border: 1px solid rgba(31,107,45,0.10);
@@ -854,6 +847,8 @@ const Contact = () => {
 .contact-info-main {
   min-height: 48px;
   max-width: 95%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 17px;
   font-weight: 600;
@@ -1013,7 +1008,57 @@ const Contact = () => {
             max-width: none;
           }
 
-          .contact-info-card { min-height: 205px; padding: 18px; border-radius: 22px; }\n.contact-info-main { min-height: auto; font-size: 16px; }
+          .contact-info-card {
+            min-height: 168px;
+            padding: 12px;
+            border-radius: 18px;
+          }
+
+          .contact-info-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+          }
+
+          .contact-info-icon svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          .contact-info-number {
+            font-size: 10px;
+          }
+
+          .contact-info-main {
+            min-height: auto;
+            max-width: 100%;
+            font-size: 13px;
+            line-height: 1.25;
+          }
+
+          .contact-info-action {
+            min-height: 30px;
+            padding: 6px 9px;
+            font-size: 10px;
+          }
+
+          .contact-info-open-dot {
+            font-size: 8px;
+            gap: 4px;
+          }
+
+          .contact-info-open-dot > span {
+            width: 6px;
+            height: 6px;
+            box-shadow: 0 0 0 3px rgba(47,138,64,.09);
+          }
+
+          .contact-info-watermark {
+            width: 58px;
+            height: 58px;
+            right: -8px;
+            bottom: -5px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

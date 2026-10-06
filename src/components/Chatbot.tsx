@@ -402,6 +402,19 @@ const Chatbot = () => {
 
   return (
     <>
+      <style>{`
+        @media (max-width: 767px) {
+          .chatbot-launcher {
+            bottom: calc(
+              1.25rem + var(--mc-order-dock-offset, 0px)
+            ) !important;
+            transition:
+              bottom .42s cubic-bezier(.2,.8,.2,1),
+              transform .25s ease !important;
+          }
+        }
+      `}</style>
+
       {/* Launcher LaMiss : reste visible pendant l'ouverture du chat */}
       <div
         className="chatbot-launcher fixed bottom-5 right-4 z-[60] sm:bottom-6 sm:right-6"

@@ -1,12 +1,13 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ArrowRight,
   CalendarHeart,
   CheckCircle2,
-  Phone,
+  MessageCircle,
+  Loader2,
   Sparkles,
   UsersRound,
 } from "lucide-react";
@@ -24,12 +25,91 @@ const CREAM = "#f7f0e4";
 const BookEvent = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const lang: "fr" | "en" = i18n.resolvedLanguage?.startsWith("en")
     ? "en"
     : "fr";
 
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [existingError, setExistingError] = useState<string | null>(null);
+
+  const referenceParam = searchParams.get("ref");
+  const emailParam = searchParams.get("email");
+
+  useEffect(() => {
+    if (!referenceParam || !emailParam) return;
+
+    let cancelled = false;
+
+    const loadExistingEvent = async () => {
+      setLoadingExisting(true);
+      setExistingError(null);
+
+      try {
+        const API_URL =
+          import.meta.env.VITE_API_URL ||
+          "https://chatbot-api-o6bw.onrender.com";
+
+        const response = await fetch(
+          `${API_URL}/api/reservations/event/lookup`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reference: Number(referenceParam),
+              email: emailParam,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error("event_not_found");
+        }
+
+        const data = await response.json();
+        if (cancelled) return;
+
+        const normalized = String(data.event_type || "")
+          .trim()
+          .toLocaleLowerCase("fr");
+
+        const match = EVENT_TYPES.find((item) => {
+          const frTitle = String(item.title.fr || "")
+            .trim()
+            .toLocaleLowerCase("fr");
+          return item.id === normalized || frTitle === normalized;
+        });
+
+        if (!match) {
+          throw new Error("event_type_not_found");
+        }
+
+        setSelectedType(match.id);
+      } catch (error) {
+        console.error("[event lookup]", error);
+        if (!cancelled) {
+          setExistingError(
+            t(
+              "bookEvent.existingNotFound",
+              lang === "fr"
+                ? "Nous n'avons pas retrouvé cette demande d'événement."
+                : "We couldn't find this event request.",
+            ),
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingExisting(false);
+      }
+    };
+
+    void loadExistingEvent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referenceParam, emailParam, lang, t]);
 
   const selectedEvent = EVENT_TYPES.find(
     (eventType) => eventType.id === selectedType,
@@ -64,8 +144,9 @@ const BookEvent = () => {
                 : t("bookEvent.back", "Retour")}
             </button>
 
-            <div className="grid overflow-hidden rounded-[36px] lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="bookevent-hero group relative min-h-[340px] overflow-hidden lg:min-h-[520px]">
+            <div className="grid grid-cols-[0.8fr_1.2fr] overflow-hidden rounded-[28px] lg:grid-cols-[0.9fr_1.1fr] lg:rounded-[36px]">
+              {" "}
+              <div className="bookevent-hero group relative min-h-[520px] overflow-hidden lg:min-h-[520px]">
                 <img
                   src="/images/mezzePartage.jpeg"
                   alt={t(
@@ -85,7 +166,8 @@ const BookEvent = () => {
 
                 <div className="bookevent-light-sweep absolute inset-0 pointer-events-none" />
 
-                <div className="bookevent-hero-content absolute inset-x-0 bottom-0 p-7 md:p-9 text-white">
+                {/* DESKTOP CONTENT — unchanged */}
+                <div className="bookevent-hero-content absolute inset-x-0 bottom-0 hidden p-7 text-white lg:block lg:p-9">
                   <div className="bookevent-badge mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold backdrop-blur">
                     <Sparkles className="h-3.5 w-3.5" />
                     {t("bookEvent.privateBadge", "Événements sur mesure")}
@@ -102,10 +184,20 @@ const BookEvent = () => {
                     )}
                   </p>
                 </div>
-              </div>
 
+                {/* ⭐ NEW — MOBILE ONLY */}
+                <div className="absolute inset-x-0 bottom-0 z-10 lg:hidden">
+                  <div className="bg-gradient-to-t from-[#123f1d]/90 via-[#123f1d]/45 to-transparent px-3 pb-6 pt-20">
+                    <Sparkles className="mb-2 h-4 w-4 text-[#e5c77e]" />
+
+                    <p className="font-playfair text-[18px] leading-tight text-white">
+                      {t("bookEvent.mobileImageTitle", "Tailor-made events")}
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div
-                className="bookevent-panel relative p-6 md:p-9 lg:p-11"
+                className="bookevent-panel relative p-3 lg:p-11"
                 style={{
                   background:
                     "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(249,242,227,0.98))",
@@ -157,14 +249,46 @@ const BookEvent = () => {
                         )}
                   </p>
 
-                  {!selectedType && (
+                  {loadingExisting && (
+                    <div
+                      className="mt-7 flex items-center gap-3 rounded-2xl px-4 py-4 text-sm font-semibold"
+                      style={{
+                        color: DARK_GREEN,
+                        background: "rgba(31,107,45,0.055)",
+                        border: "1px solid rgba(31,107,45,0.10)",
+                      }}
+                    >
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t(
+                        "bookEvent.loadingExisting",
+                        lang === "fr"
+                          ? "Chargement de votre événement..."
+                          : "Loading your event...",
+                      )}
+                    </div>
+                  )}
+
+                  {existingError && !loadingExisting && (
+                    <div
+                      className="mt-7 rounded-2xl px-4 py-4 text-sm"
+                      style={{
+                        color: "#a23b32",
+                        background: "rgba(224,92,92,0.07)",
+                        border: "1px solid rgba(224,92,92,0.18)",
+                      }}
+                    >
+                      {existingError}
+                    </div>
+                  )}
+
+                  {!selectedType && !loadingExisting && (
                     <div className="mt-7 grid gap-3">
                       {EVENT_TYPES.map((eventType, index) => (
                         <button
                           key={eventType.id}
                           type="button"
                           onClick={() => setSelectedType(eventType.id)}
-                          className="bookevent-type-card group relative flex items-center gap-4 overflow-hidden rounded-[22px] border p-4 text-left transition duration-300 hover:-translate-y-1 hover:shadow-lg"
+                          className="bookevent-type-card group relative flex items-center gap-2 overflow-hidden rounded-[16px] border p-2.5 text-left transition duration-300 hover:-translate-y-1 hover:shadow-lg lg:gap-4 lg:rounded-[22px] lg:p-4"
                           style={
                             {
                               background:
@@ -181,7 +305,7 @@ const BookEvent = () => {
                           }
                         >
                           <span
-                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg lg:h-14 lg:w-14 lg:rounded-2xl lg:text-2xl"
                             style={{
                               background:
                                 index % 2 === 0
@@ -195,24 +319,24 @@ const BookEvent = () => {
 
                           <span className="min-w-0 flex-1">
                             <span
-                              className="block font-semibold"
+                              className="block text-[12px] font-semibold leading-tight lg:text-base"
                               style={{ color: DARK_GREEN }}
                             >
                               {eventType.title[lang]}
                             </span>
-                            <span className="mt-1 block text-sm leading-6 text-neutral-500">
+                            <span className="mt-1 hidden text-sm leading-6 text-neutral-500 lg:block">
                               {eventType.subtitle[lang]}
                             </span>
                           </span>
 
                           <span
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition group-hover:translate-x-1"
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition group-hover:translate-x-1 lg:h-9 lg:w-9"
                             style={{
                               color: index % 2 === 0 ? GREEN : GOLD,
                               background: "rgba(255,255,255,0.75)",
                             }}
                           >
-                            <ArrowRight className="h-4 w-4" />
+                            <ArrowRight className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                           </span>
                         </button>
                       ))}
@@ -269,7 +393,7 @@ const BookEvent = () => {
         {/* Trust strip */}
         <section className="pb-20 pt-2">
           <div className="mx-auto max-w-[1100px] px-4 sm:px-6">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
               {[
                 {
                   icon: "✦",
@@ -307,14 +431,14 @@ const BookEvent = () => {
               ].map((item) => (
                 <div
                   key={item.title}
-                  className="rounded-3xl p-6 text-center"
+                  className="flex min-h-[150px] flex-col items-center rounded-[20px] p-3 text-center sm:min-h-0 sm:rounded-3xl sm:p-6"
                   style={{
                     background: "rgba(255,255,255,0.70)",
                     border: "1px solid rgba(31,107,45,0.09)",
                   }}
                 >
                   <div
-                    className="mx-auto flex h-11 w-11 items-center justify-center rounded-full text-lg"
+                    className="mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm sm:h-11 sm:w-11 sm:text-lg"
                     style={{
                       color: GOLD,
                       background: "rgba(197,154,40,0.10)",
@@ -322,24 +446,30 @@ const BookEvent = () => {
                   >
                     {item.icon}
                   </div>
+
                   <h3
-                    className="mt-4 font-playfair text-xl"
+                    className="mt-3 font-playfair text-[14px] leading-tight sm:mt-4 sm:text-xl"
                     style={{ color: DARK_GREEN }}
                   >
                     {item.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-neutral-500">
+
+                  <p className="mt-2 text-[10px] leading-[1.35] text-neutral-500 sm:text-sm sm:leading-6">
                     {item.text}
                   </p>
                 </div>
               ))}
             </div>
             <a
-              href="tel:+33782737777"
+              href="https://wa.me/33782737777"
+              target="_blank"
+              rel="noopener noreferrer"
               className="
     mx-auto mt-6 flex w-[calc(100%-2rem)] max-w-xl
     items-center justify-center gap-2 rounded-full
     px-4 py-3 text-[11px] font-semibold
+    transition-all duration-300
+    hover:-translate-y-0.5 hover:shadow-lg
     sm:w-fit sm:gap-3 sm:px-7 sm:py-4 sm:text-sm
   "
               style={{
@@ -353,15 +483,20 @@ const BookEvent = () => {
               <span
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                 style={{
-                  background: "rgba(197,154,40,0.12)",
-                  color: "#c59a28",
+                  background: "rgba(31,107,45,0.10)",
+                  color: GREEN,
                 }}
               >
-                <Phone className="h-4 w-4" />
+                <MessageCircle className="h-4 w-4" />
               </span>
 
               <span className="min-w-0 truncate sm:whitespace-nowrap sm:overflow-visible">
-                {t("bookEvent.preferCall", "Échangeons directement")}
+                {t(
+                  "bookEvent.preferWhatsApp",
+                  lang === "fr"
+                    ? "Contactez-nous sur WhatsApp"
+                    : "Contact us on WhatsApp",
+                )}
               </span>
 
               <span className="shrink-0" style={{ color: "#c59a28" }}>
