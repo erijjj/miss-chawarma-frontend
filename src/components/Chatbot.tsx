@@ -3,7 +3,9 @@ import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "https://chatbot-api-o6bw.onrender.com";
+// Même logique que le reste du site : VITE_API_URL en local, Render sinon.
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://chatbot-api-o6bw.onrender.com";
 
 const SYSTEM_PROMPT = `Tu es LaMiss, l'assistante virtuelle chaleureuse et experte de Miss Chawarma, un restaurant libanais authentique situé au 128 Rue Oberkampf, Paris 11e. Tu parles comme un excellent serveur libanais : accueillant, gourmand, enthousiaste, et tu donnes envie de commander.
 

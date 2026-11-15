@@ -18,14 +18,16 @@ const BookTable = lazy(() => import("./pages/BookTable"));
 const BookEvent = lazy(() => import("./pages/BookEvent"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const ManageReservation = lazy(() => import("@/pages/ManageReservation"));
+const About = lazy(() => import("./components/About"));
+// Le chatbot embarque la librairie Markdown (~350 Ko de code) : chargé à part,
+// juste après la page, pour que le site s'affiche plus vite.
+const Chatbot = lazy(() => import("./components/Chatbot"));
 
 import AOS from "aos";
 import "aos/dist/aos.css";
 
-import Chatbot from "./components/Chatbot";
 import ScrollToTop from "./components/ScrollToTop";
 import CartDrawer from "./components/CartDrawer";
-import About from "./components/About";
 import CookieConsent from "./components/CookieConsent";
 import MobileOrderDock from "./components/MobileOrderDock";
 
@@ -95,7 +97,9 @@ const App = () => {
             <OrderDockGate />
 
             <CartDrawer />
-            <Chatbot />
+            <Suspense fallback={null}>
+              <Chatbot />
+            </Suspense>
             <CookieConsent />
           </BrowserRouter>
         </CartProvider>

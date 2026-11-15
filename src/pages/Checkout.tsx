@@ -363,6 +363,10 @@ const DeliveryAddressPicker: React.FC<DeliveryAddressPickerProps> = ({
 
   const [selectedAddress, setSelectedAddress] =
     useState<DeliveryAddress | null>(null);
+  // Lu à l'ouverture de la carte seulement : passer par une ref évite de
+  // recréer toute la carte Google à chaque déplacement du marqueur.
+  const selectedAddressRef = useRef<DeliveryAddress | null>(null);
+  selectedAddressRef.current = selectedAddress;
 
   useEffect(() => {
     let cancelled = false;
@@ -459,11 +463,12 @@ const DeliveryAddressPicker: React.FC<DeliveryAddressPickerProps> = ({
           google.maps.importLibrary("marker"),
         ]);
 
+      const startAddress = selectedAddressRef.current;
       const initialPosition =
-        selectedAddress?.lat && selectedAddress?.lng
+        startAddress?.lat && startAddress?.lng
           ? {
-              lat: selectedAddress.lat,
-              lng: selectedAddress.lng,
+              lat: startAddress.lat,
+              lng: startAddress.lng,
             }
           : {
               lat: 48.8658,
@@ -472,7 +477,7 @@ const DeliveryAddressPicker: React.FC<DeliveryAddressPickerProps> = ({
 
       const map = new Map(mapContainerRef.current, {
         center: initialPosition,
-        zoom: selectedAddress ? 17 : 14,
+        zoom: startAddress ? 17 : 14,
         mapId: GOOGLE_MAPS_MAP_ID,
         disableDefaultUI: true,
         zoomControl: true,
@@ -790,7 +795,7 @@ const OrderSummary: React.FC<{
   orderType: "emporter" | "livraison";
   discountAmount?: number;
 }> = ({ subtotal, deliveryFee, total, orderType, discountAmount }) => {
-  const { items } = useCart();
+  const { items, beignetsDiscount } = useCart();
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage?.startsWith("en") ? "en" : "fr";
 
@@ -814,7 +819,10 @@ const OrderSummary: React.FC<{
           const image = (item as { image?: string }).image;
 
           return (
-            <div key={item.dishId} className="checkout-summary-item">
+            <div
+              key={item.lineId ?? String(item.dishId)}
+              className="checkout-summary-item"
+            >
               <img
                 src={image || PLACEHOLDER}
                 alt={item.name}
@@ -839,6 +847,20 @@ const OrderSummary: React.FC<{
       <div className="checkout-summary-divider" />
 
       <div className="checkout-summary-lines">
+        {/* Remise automatique liée aux paliers beignets (6 pour 12€,
+            12 pour 21,90€). Sans cette ligne, l'écart entre la somme des
+            lignes et le sous-total est inexplicable pour le client. */}
+        {beignetsDiscount > 0 && (
+          <div>
+            <span style={{ color: GREEN }}>
+              {lang === "fr" ? "Offre beignets" : "Fritters offer"}
+            </span>
+            <strong style={{ color: GREEN }}>
+              −{formatEuro(beignetsDiscount)}
+            </strong>
+          </div>
+        )}
+
         <div>
           <span>{lang === "fr" ? "Sous-total" : "Subtotal"}</span>
           <strong>{formatEuro(subtotal)}</strong>
@@ -846,10 +868,10 @@ const OrderSummary: React.FC<{
 
         {discountAmount != null && discountAmount > 0 && (
           <div>
-            <span style={{ color: "#1f6b2d" }}>
+            <span style={{ color: GREEN }}>
               {lang === "fr" ? "Réduction" : "Discount"}
             </span>
-            <strong style={{ color: "#1f6b2d" }}>
+            <strong style={{ color: GREEN }}>
               −{formatEuro(discountAmount)}
             </strong>
           </div>
@@ -1166,6 +1188,15 @@ const Checkout = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email.trim() }),
       });
+      if (response.status === 429) {
+        setVerificationStatus("error");
+        setVerificationMessage(
+          lang === "fr"
+            ? "Trop de demandes de code. Réessayez dans une heure."
+            : "Too many code requests. Please try again in an hour.",
+        );
+        return;
+      }
       if (!response.ok) throw new Error();
       setVerificationStatus("sent");
     } catch {
@@ -1463,7 +1494,12 @@ const Checkout = () => {
       if (paymentMethod === "carte") {
         const paymentResponse = await fetch(
           `${API_URL}/api/orders/${data.id}/create-payment-intent`,
-          { method: "POST" },
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            // L'API exige l'email de la commande pour délivrer le paiement
+            body: JSON.stringify({ email: form.email }),
+          },
         );
 
         const paymentData = await paymentResponse.json();

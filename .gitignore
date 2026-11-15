@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Variables d'environnement (jamais dans Git)
+.env
+.env.*
+!.env.example

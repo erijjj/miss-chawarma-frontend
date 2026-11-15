@@ -15,4 +15,18 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Librairies dans des fichiers séparés : elles changent rarement,
+        // le navigateur les garde en cache d'une mise en ligne à l'autre.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "vendor-react";
+          if (id.includes("react-router") || id.includes("@remix-run")) return "vendor-router";
+          if (id.includes("i18next")) return "vendor-i18n";
+        },
+      },
+    },
+  },
 }));

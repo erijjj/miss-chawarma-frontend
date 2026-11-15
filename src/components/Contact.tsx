@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Turnstile, { TURNSTILE_ENABLED, type TurnstileHandle } from "./Turnstile";
 import {
   ArrowUpRight,
   Check,
@@ -42,6 +43,11 @@ const Contact = () => {
     message: "",
   });
   const [status, setStatus] = useState<Status>("idle");
+  const [honeypot, setHoneypot] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaWarning, setCaptchaWarning] = useState(false);
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const startedAt = useRef(Date.now());
 
   const wordCount = useMemo(
     () => fields.message.trim().split(/\s+/).filter(Boolean).length,
@@ -72,6 +78,19 @@ const Contact = () => {
     event.preventDefault();
     if (errors.name || errors.message || wordCount > 500) return;
 
+    // Anti-robot (Cloudflare Turnstile)
+    if (TURNSTILE_ENABLED && !captchaToken) {
+      setCaptchaWarning(true);
+      return;
+    }
+    setCaptchaWarning(false);
+
+    if (honeypot) {
+      setStatus("success");
+      setFields({ name: "", email: "", message: "" });
+      return;
+    }
+
     setStatus("loading");
 
     try {
@@ -81,6 +100,9 @@ const Contact = () => {
         body: JSON.stringify({
           ...fields,
           language: lang,
+          website: honeypot,
+          elapsed_ms: Date.now() - startedAt.current,
+          turnstile_token: captchaToken,
         }),
       });
 
@@ -90,11 +112,13 @@ const Contact = () => {
       }
 
       setStatus("success");
-
-
       setFields({ name: "", email: "", message: "" });
+      startedAt.current = Date.now();
     } catch {
       setStatus("error");
+    } finally {
+      // un jeton Turnstile ne sert qu'une fois
+      captchaRef.current?.reset();
     }
   };
 
@@ -286,6 +310,36 @@ const Contact = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: "-9999px",
+                    width: 1,
+                    height: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Champ piège anti-robot : en lecture seule tant qu'il n'a pas le
+                      focus, pour que le remplissage auto de Chrome ne le remplisse pas
+                      (sinon un vrai client était pris pour un robot). */}
+                  <label htmlFor="contact-hpf">Ne pas remplir</label>
+                  <input
+                    id="contact-hpf"
+                    name="mc_hp_field"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    readOnly
+                    onFocus={(event) => event.currentTarget.removeAttribute("readonly")}
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    data-form-type="other"
+                    value={honeypot}
+                    onChange={(event) => setHoneypot(event.target.value)}
+                  />
+                </div>
+
                 <div className="contact-field">
                   <label htmlFor="contact-name">
                     <User className="h-4 w-4" />
@@ -343,6 +397,7 @@ const Contact = () => {
                     id="contact-message"
                     required
                     rows={6}
+                    maxLength={5000}
                     value={fields.message}
                     onChange={(event) =>
                       updateField("message", event.target.value)
@@ -352,6 +407,17 @@ const Contact = () => {
 
                   {errors.message && (
                     <p className="contact-error">{errors.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Turnstile ref={captchaRef} onToken={setCaptchaToken} language={lang} />
+                  {captchaWarning && (
+                    <p className="text-xs mt-2" style={{ color: "#b45309" }}>
+                      {lang === "fr"
+                        ? "Vérification anti-robot en cours, réessayez dans un instant."
+                        : "Anti-bot check in progress, please try again in a moment."}
+                    </p>
                   )}
                 </div>
 

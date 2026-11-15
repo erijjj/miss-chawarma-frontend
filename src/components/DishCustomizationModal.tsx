@@ -273,7 +273,8 @@ const DishCustomizationModal: React.FC<Props> = ({
 
   const fixed = rules.fixed ?? [];
   const removable = rules.removable ?? [];
-  const choiceGroups = rules.choice_groups ?? [];
+  // Mémoïsé : une nouvelle liste vide à chaque rendu ferait recalculer les useMemo
+  const choiceGroups = React.useMemo(() => rules.choice_groups ?? [], [rules]);
 
   const [removed, setRemoved] = useState<string[]>([]);
   const [selections, setSelections] = useState<Record<string, ChoiceSelection>>(
@@ -490,7 +491,7 @@ const DishCustomizationModal: React.FC<Props> = ({
       });
     });
     return Array.from(set);
-  }, [baseAllergens, rules, selections, dishesById]);
+  }, [baseAllergens, rules, choiceGroups, selections, dishesById]);
 
   const handleConfirm = () => {
     if (!allComplete) return;

@@ -2045,7 +2045,6 @@ const MenuSection = () => {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navPinned, tabs.length, visibleSections.length]);
 
   React.useEffect(() => {

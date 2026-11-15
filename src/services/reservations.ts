@@ -3,11 +3,13 @@
 // last_name séparés, email OBLIGATOIRE, phone (pas tel), guests (pas
 // convives), table_ids en plus des champs déjà existants.
 
-const API = import.meta.env.VITE_API_URL; // ex. https://ton-backend.railway.app
+// Même repli que les autres appels API : sans VITE_API_URL au build, les
+// requêtes partaient vers "undefined/table-reservations".
+const API =
+  import.meta.env.VITE_API_URL || "https://chatbot-api-o6bw.onrender.com";
 
 export interface Disponibilite {
   occupied_table_ids: (number | string)[];
-  duration_minutes: number;
 }
 
 export interface Contact {
@@ -24,6 +26,9 @@ export interface DemandeReservation {
   convives: number;
   contact: Contact;
   lang: string;
+  website?: string;
+  elapsed_ms?: number;
+  turnstile_token?: string;
 }
 
 export class TableDejaPrise extends Error {
@@ -79,6 +84,9 @@ export async function reserver(d: DemandeReservation) {
       note: d.contact.note ?? "",
       language: d.lang,
       table_ids: d.tables.map(String),
+      website: d.website ?? "",
+      elapsed_ms: d.elapsed_ms,
+      turnstile_token: d.turnstile_token ?? "",
     }),
   });
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -8,6 +8,7 @@ import {
   ChampsInvalides,
 } from "../services/reservations";
 import { useTranslation } from "react-i18next";
+import Turnstile, { TURNSTILE_ENABLED, type TurnstileHandle } from "./Turnstile";
 import {
   Users,
   Clock3,
@@ -355,9 +356,13 @@ const PlanDeSalle: React.FC = () => {
   const [chargement, setChargement] = useState(false);
   const [etape, setEtape] = useState<"plan" | "contact" | "confirme">("plan");
   const [envoi, setEnvoi] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<TurnstileHandle>(null);
   const [reference, setReference] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [honeypot, setHoneypot] = useState("");
+  const startedAt = useRef(Date.now());
 
   useEffect(() => {
     if (!toast) return;
@@ -581,7 +586,7 @@ const PlanDeSalle: React.FC = () => {
         }
       }
     })();
-  }, [refModif, emailModif]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refModif, emailModif]);
   const couvertsLibres = IDS.filter((id) => !occupees.has(id)).reduce<number>(
     (n, id) => n + placesDe(id),
     0,
@@ -631,6 +636,27 @@ const PlanDeSalle: React.FC = () => {
       setMessage("emailRequis");
       return;
     }
+    // Anti-robot (Cloudflare Turnstile) : seulement pour une nouvelle réservation
+    if (TURNSTILE_ENABLED && !modeEdition && !captchaToken) {
+      setToast(
+        t(
+          "plan.captchaAttente",
+          "Vérification anti-robot en cours, réessayez dans un instant.",
+        ),
+      );
+      return;
+    }
+    // L'API refuse désormais une sélection qui n'a pas assez de places
+    if (placesTotal(selection) < convives) {
+      setToast(
+        t(
+          "plan.manquePlaces",
+          "{{p}} places retenues sur {{n}} nécessaires.",
+          { p: placesTotal(selection), n: convives },
+        ),
+      );
+      return;
+    }
 
     if (!USE_API) {
       setOccupees((prev) => new Set([...prev, ...selection]));
@@ -663,6 +689,9 @@ const PlanDeSalle: React.FC = () => {
           convives,
           contact,
           lang: locale,
+          website: honeypot,
+          elapsed_ms: Date.now() - startedAt.current,
+          turnstile_token: captchaToken,
         });
         setReference(String(rep.id));
       }
@@ -684,6 +713,8 @@ const PlanDeSalle: React.FC = () => {
       }
     } finally {
       setEnvoi(false);
+      // un jeton Turnstile ne sert qu'une fois
+      captchaRef.current?.reset();
     }
   }
   function recommencer() {
@@ -1273,6 +1304,36 @@ const PlanDeSalle: React.FC = () => {
 
               {selection.length > 0 && (
                 <div className="plan-contact">
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      left: "-9999px",
+                      width: 1,
+                      height: 1,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Champ piège anti-robot : en lecture seule tant qu'il n'a pas le
+                        focus, pour que le remplissage auto de Chrome ne le remplisse pas
+                        (sinon un vrai client était pris pour un robot). */}
+                    <label htmlFor="plan-hpf">Ne pas remplir</label>
+                    <input
+                      id="plan-hpf"
+                      name="mc_hp_field"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      readOnly
+                      onFocus={(event) => event.currentTarget.removeAttribute("readonly")}
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      data-form-type="other"
+                      value={honeypot}
+                      onChange={(event) => setHoneypot(event.target.value)}
+                    />
+                  </div>
+
                   <span className="plan-label">
                     {t("plan.coordonnees", "Vos coordonnées")}
                   </span>
@@ -1311,11 +1372,20 @@ const PlanDeSalle: React.FC = () => {
                       "plan.note",
                       "Allergie, poussette, anniversaire…",
                     )}
+                    maxLength={1000}
                     value={contact.note}
                     onChange={(e) =>
                       setContact({ ...contact, note: e.target.value })
                     }
                   />
+                  {!modeEdition && (
+                    <Turnstile
+                      ref={captchaRef}
+                      onToken={setCaptchaToken}
+                      language={locale}
+                      className="mt-4"
+                    />
+                  )}
                   <button
                     type="button"
                     className="plan-cta plan-cta-large mt-4"
@@ -1552,7 +1622,7 @@ const PlanDeSalle: React.FC = () => {
                   <button
                     type="button"
                     className="plan-cta"
-                    disabled={!selection.length}
+                    disabled={!selection.length || placesSelection < convives}
                     onClick={() => setPlanOuvert(false)}
                   >
                     {t("plan.valider", "Valider cette table")}

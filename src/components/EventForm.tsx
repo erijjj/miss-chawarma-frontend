@@ -4,7 +4,7 @@
 // horaires 11h30–02h00/00h00, 42 personnes max, 500 mots max) + envoi Formspree.
 // Affiché INLINE dans la page (pas en popup) pour garder le header visible (switch FR/EN).
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { useTranslation } from "react-i18next";
@@ -23,6 +23,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { getEventType, EventField } from "../config/eventFormsConfig";
+import Turnstile, { TURNSTILE_ENABLED, type TurnstileHandle } from "./Turnstile";
 
 // En local, VITE_API_URL (dans .env) prend le dessus ; sinon on retombe sur Render.
 const API_URL =
@@ -79,6 +80,11 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [honeypot, setHoneypot] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaWarning, setCaptchaWarning] = useState(false);
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const startedAt = useRef(Date.now());
 
   useEffect(() => {
     if (
@@ -91,11 +97,11 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
     }
   }, [status]);
 
-  if (!eventType) return null;
-
+  // NB : le "return null" quand eventType est absent est placé APRÈS tous
+  // les hooks (règle des hooks React), plus bas.
   const parseDetailsIntoSpecific = (details: string) => {
     const parsed: SpecificValues = {};
-    if (!details.trim()) return parsed;
+    if (!eventType || !details.trim()) return parsed;
 
     details.split(" ; ").forEach((piece) => {
       const separator = piece.indexOf(" : ");
@@ -120,6 +126,10 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
 
     return parsed;
   };
+  // Ref : l'effet de chargement ci-dessous ne doit se relancer que si la
+  // référence / l'email / le type changent, pas à chaque rendu.
+  const parseDetailsRef = useRef(parseDetailsIntoSpecific);
+  parseDetailsRef.current = parseDetailsIntoSpecific;
 
   useEffect(() => {
     if (!referenceParam || !emailParam) {
@@ -163,7 +173,7 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
           personnes: data.guests ? String(data.guests) : "",
           demandes: data.note || "",
         });
-        setSpecific(parseDetailsIntoSpecific(data.details || ""));
+        setSpecific(parseDetailsRef.current(data.details || ""));
         setErrors({});
         // IMPORTANT: when a reservation is opened from ref + email,
         // do NOT jump straight into the edit form.
@@ -183,6 +193,8 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
       cancelled = true;
     };
   }, [referenceParam, emailParam, eventTypeId]);
+
+  if (!eventType) return null;
 
   // ─────────────── Contrôles de saisie (repris de l'ancien formulaire) ───────────────
 
@@ -353,6 +365,13 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
     e.preventDefault();
     if (!validate()) return;
 
+    // Anti-robot (Cloudflare Turnstile) : seulement pour une nouvelle demande
+    if (TURNSTILE_ENABLED && !editMode && !captchaToken) {
+      setCaptchaWarning(true);
+      return;
+    }
+    setCaptchaWarning(false);
+
     setStatus("loading");
     setCancelError(null);
 
@@ -377,7 +396,14 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
         ? `${API_URL}/api/reservations/event/modify`
         : `${API_URL}/api/reservations/event`;
 
-      const body = isUpdate ? { reference, ...payload } : payload;
+      const body = isUpdate
+        ? { reference, ...payload }
+        : {
+            ...payload,
+            website: honeypot,
+            elapsed_ms: Date.now() - startedAt.current,
+            turnstile_token: captchaToken,
+          };
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -409,6 +435,9 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
     } catch (error) {
       console.error("[event submit]", error);
       setStatus("error");
+    } finally {
+      // un jeton Turnstile ne sert qu'une fois
+      captchaRef.current?.reset();
     }
   };
 
@@ -1093,6 +1122,36 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 w-full" noValidate>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            width: 1,
+            height: 1,
+            overflow: "hidden",
+          }}
+        >
+          {/* Champ piège anti-robot : en lecture seule tant qu'il n'a pas le
+              focus, pour que le remplissage auto de Chrome ne le remplisse pas
+              (sinon un vrai client était pris pour un robot). */}
+          <label htmlFor="event-hpf">Ne pas remplir</label>
+          <input
+            id="event-hpf"
+            name="mc_hp_field"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            readOnly
+            onFocus={(event) => event.currentTarget.removeAttribute("readonly")}
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other"
+            value={honeypot}
+            onChange={(event) => setHoneypot(event.target.value)}
+          />
+        </div>
+
         {/* Prénom + Nom */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -1247,6 +1306,19 @@ const EventForm = ({ eventTypeId, onBack }: EventFormProps) => {
             </p>
           </div>
         </div>
+
+        {!editMode && (
+          <div>
+            <Turnstile ref={captchaRef} onToken={setCaptchaToken} language={lang} />
+            {captchaWarning && (
+              <p className="text-xs mt-2" style={{ color: "#b45309" }}>
+                {lang === "fr"
+                  ? "Vérification anti-robot en cours, réessayez dans un instant."
+                  : "Anti-bot check in progress, please try again in a moment."}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Submit */}
         <button
