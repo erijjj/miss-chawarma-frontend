@@ -251,7 +251,24 @@ const enMinutes = (h: string) => {
 const enHeure = (m: number) =>
   `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
-function creneauxDuJour(iso: string): string[] {
+/** Créneaux du service d'un jour. Si `maintenant` est fourni, les créneaux
+ *  déjà passés sont retirés (l'API les refuse de toute façon). */
+function creneauxDuJour(iso: string, maintenant?: Date): string[] {
+  const tous = tousCreneauxDuJour(iso);
+  if (!maintenant) return tous;
+  const minuit = new Date(`${iso}T00:00:00`).getTime();
+  return tous.filter(
+    (h) => minuit + enMinutesService(h) * 60000 > maintenant.getTime(),
+  );
+}
+
+/** "00:30" appartient au service de la veille → 24h30 depuis minuit. */
+function enMinutesService(h: string): number {
+  const m = enMinutes(h);
+  return m < enMinutes(OUVERTURE) ? m + 24 * 60 : m;
+}
+
+function tousCreneauxDuJour(iso: string): string[] {
   const jour = new Date(`${iso}T12:00:00`).getDay();
   let fin = enMinutes(FERMETURE[jour]);
   if (fin < enMinutes(OUVERTURE)) fin += 24 * 60; // ferme après minuit
@@ -337,9 +354,20 @@ const PlanDeSalle: React.FC = () => {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage || "fr";
 
+  // Heure actuelle, rafraîchie chaque minute : les créneaux passés disparaissent
+  const [maintenant, setMaintenant] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setMaintenant(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const jours = useMemo(() => {
     const out: Date[] = [];
     const base = new Date();
+    // Plus aucun créneau aujourd'hui (soirée tardive) → on commence demain
+    if (creneauxDuJour(toISO(base), base).length === 0) {
+      base.setDate(base.getDate() + 1);
+    }
     for (let i = 0; i < 21; i++) {
       const d = new Date(base);
       d.setDate(d.getDate() + i);
@@ -357,6 +385,12 @@ const PlanDeSalle: React.FC = () => {
   const [etape, setEtape] = useState<"plan" | "contact" | "confirme">("plan");
   const [envoi, setEnvoi] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  // Refs sur les champs : au moment de confirmer, on relit ce qui est
+  // VRAIMENT affiché (le remplissage auto de Chrome ne déclenche pas
+  // toujours onChange tant qu'on n'a pas cliqué dans le champ).
+  const nomRef = useRef<HTMLInputElement>(null);
+  const telRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
   const captchaRef = useRef<TurnstileHandle>(null);
   const [reference, setReference] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -375,6 +409,7 @@ const PlanDeSalle: React.FC = () => {
     email: "",
     note: "",
   });
+  const contactState = contact;
   const [planOuvert, setPlanOuvert] = useState(false);
   const [personnalise, setPersonnalise] = useState(false); // false = suggestion auto encore active
   const [selectionAvant, setSelectionAvant] = useState<TableId[]>([]);
@@ -389,8 +424,12 @@ const PlanDeSalle: React.FC = () => {
   const [annulationFaite, setAnnulationFaite] = useState(false);
   const [annulationErreur, setAnnulationErreur] = useState<string | null>(null);
   const placesSelection = placesTotal(selection);
-  const listeCreneaux = useMemo(() => creneauxDuJour(date), [date]);
-  const derniereArrivee = listeCreneaux[listeCreneaux.length - 1];
+  const listeCreneaux = useMemo(
+    () => creneauxDuJour(date, maintenant),
+    [date, maintenant],
+  );
+  const tousCreneaux = useMemo(() => tousCreneauxDuJour(date), [date]);
+  const derniereArrivee = tousCreneaux[tousCreneaux.length - 1];
 
   const dateLongue = (iso: string) =>
     new Date(`${iso}T12:00:00`).toLocaleDateString(locale, {
@@ -628,6 +667,19 @@ const PlanDeSalle: React.FC = () => {
   }
 
   async function confirmer() {
+    const contact = {
+      ...contactState,
+      nom: nomRef.current?.value ?? contactState.nom,
+      tel: telRef.current?.value ?? contactState.tel,
+      email: emailRef.current?.value ?? contactState.email,
+    };
+    if (
+      contact.nom !== contactState.nom ||
+      contact.tel !== contactState.tel ||
+      contact.email !== contactState.email
+    ) {
+      setContact(contact);
+    }
     if (!contact.nom.trim() || !contact.tel.trim()) {
       setMessage("champs");
       return;
@@ -707,7 +759,13 @@ const PlanDeSalle: React.FC = () => {
         setEtape("plan");
         setMessage("pris");
       } else if (e instanceof ChampsInvalides) {
-        setMessage("champs");
+        // Message précis renvoyé par l'API (créneau passé, places
+        // insuffisantes…) plutôt qu'un texte générique trompeur
+        setMessage(
+          typeof e.detail === "string" && e.detail
+            ? `api:${e.detail}`
+            : "champs",
+        );
       } else {
         setMessage("reseau");
       }
@@ -1277,6 +1335,9 @@ const PlanDeSalle: React.FC = () => {
                   )}
                 </div>
               )}
+              {message?.startsWith("api:") && (
+                <div className="plan-alert">{message.slice(4)}</div>
+              )}
               {message === "champs" && (
                 <div className="plan-alert">
                   {t(
@@ -1341,30 +1402,44 @@ const PlanDeSalle: React.FC = () => {
                     <input
                       className="plan-input"
                       placeholder={t("plan.nom", "Nom et prénom")}
+                      ref={nomRef}
+                      name="name"
+                      autoComplete="name"
                       value={contact.nom}
-                      onChange={(e) =>
-                        setContact({ ...contact, nom: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setContact((c) => ({ ...c, nom: v }));
+                      }}
                     />
 
                     <input
                       className="plan-input"
                       inputMode="tel"
                       placeholder={t("plan.tel", "Téléphone")}
+                      ref={telRef}
+                      name="tel"
+                      type="tel"
+                      autoComplete="tel"
                       value={contact.tel}
-                      onChange={(e) =>
-                        setContact({ ...contact, tel: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setContact((c) => ({ ...c, tel: v }));
+                      }}
                     />
                   </div>
                   <input
                     className="plan-input mt-3"
                     inputMode="email"
                     placeholder={t("plan.email", "E-mail")}
+                    ref={emailRef}
+                    name="email"
+                    type="email"
+                    autoComplete="email"
                     value={contact.email}
-                    onChange={(e) =>
-                      setContact({ ...contact, email: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setContact((c) => ({ ...c, email: v }));
+                    }}
                   />
                   <input
                     className="plan-input mt-3"
@@ -1373,10 +1448,12 @@ const PlanDeSalle: React.FC = () => {
                       "Allergie, poussette, anniversaire…",
                     )}
                     maxLength={1000}
+                    autoComplete="off"
                     value={contact.note}
-                    onChange={(e) =>
-                      setContact({ ...contact, note: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setContact((c) => ({ ...c, note: v }));
+                    }}
                   />
                   {!modeEdition && (
                     <Turnstile
